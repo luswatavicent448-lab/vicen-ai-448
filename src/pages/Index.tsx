@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Menu, Sparkles } from "lucide-react";
+import { Menu, Sparkles, Settings } from "lucide-react";
 import { Conversation, Message } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
 import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
+import { SettingsPanel } from "@/components/SettingsPanel";
 import { toast } from "sonner";
 
 function generateId() {
