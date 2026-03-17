@@ -27,7 +27,20 @@ export default function ChatPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("vicen-theme") as "dark" | "light") || "dark");
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(() => localStorage.getItem("vicen-bg"));
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", theme === "light");
+    localStorage.setItem("vicen-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    if (backgroundImage) localStorage.setItem("vicen-bg", backgroundImage);
+    else localStorage.removeItem("vicen-bg");
+  }, [backgroundImage]);
 
   const active = conversations.find((c) => c.id === activeId) || null;
 
