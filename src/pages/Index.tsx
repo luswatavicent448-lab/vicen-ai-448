@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Menu, Sparkles } from "lucide-react";
+import { Menu, Sparkles, Settings } from "lucide-react";
 import { Conversation, Message } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
 import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
+import { SettingsPanel } from "@/components/SettingsPanel";
 import { toast } from "sonner";
 
 function generateId() {
@@ -26,7 +27,20 @@ export default function ChatPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("vicen-theme") as "dark" | "light") || "dark");
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(() => localStorage.getItem("vicen-bg"));
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", theme === "light");
+    localStorage.setItem("vicen-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    if (backgroundImage) localStorage.setItem("vicen-bg", backgroundImage);
+    else localStorage.removeItem("vicen-bg");
+  }, [backgroundImage]);
 
   const active = conversations.find((c) => c.id === activeId) || null;
 
@@ -116,7 +130,14 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-dvh overflow-hidden">
+    <div
+      className="flex h-dvh overflow-hidden transition-colors duration-300"
+      style={backgroundImage ? {
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      } : undefined}
+    >
       <Sidebar
         conversations={conversations}
         activeId={activeId}
@@ -127,21 +148,37 @@ export default function ChatPage() {
         onClose={() => setSidebarOpen(false)}
       />
 
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        theme={theme}
+        onThemeChange={setTheme}
+        backgroundImage={backgroundImage}
+        onBackgroundChange={setBackgroundImage}
+        onBackgroundClear={() => setBackgroundImage(null)}
+      />
+
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+        <header className={`flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 ${backgroundImage ? "bg-background/80 backdrop-blur-md" : ""}`}>
           <button
             onClick={() => setSidebarOpen(true)}
             className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center sm:hidden"
           >
             <Menu className="w-4 h-4" />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <span className="font-semibold text-base tracking-tight">Vicen AI</span>
           </div>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
         </header>
 
         {/* Messages or Welcome */}
