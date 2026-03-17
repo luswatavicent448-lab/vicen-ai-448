@@ -1,0 +1,59 @@
+import { useState, useRef, KeyboardEvent } from "react";
+import { Send } from "lucide-react";
+
+export function ChatInput({
+  onSend,
+  disabled,
+}: {
+  onSend: (text: string) => void;
+  disabled: boolean;
+}) {
+  const [text, setText] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleSend = () => {
+    const trimmed = text.trim();
+    if (!trimmed || disabled) return;
+    onSend(trimmed);
+    setText("");
+    if (inputRef.current) inputRef.current.style.height = "auto";
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleInput = () => {
+    const el = inputRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 150) + "px";
+    }
+  };
+
+  return (
+    <div className="border-t border-border bg-background p-3 sm:p-4">
+      <div className="max-w-3xl mx-auto flex gap-3 items-end">
+        <textarea
+          ref={inputRef}
+          value={text}
+          onChange={(e) => { setText(e.target.value); handleInput(); }}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask anything..."
+          rows={1}
+          className="flex-1 resize-none bg-secondary text-foreground placeholder:text-muted-foreground rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 scrollbar-thin"
+        />
+        <button
+          onClick={handleSend}
+          disabled={disabled || !text.trim()}
+          className="shrink-0 w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center transition-all hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
