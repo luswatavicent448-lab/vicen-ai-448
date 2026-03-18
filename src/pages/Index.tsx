@@ -8,7 +8,6 @@ import { Sidebar } from "@/components/Sidebar";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { LoginScreen } from "@/components/LoginScreen";
 import { QuickActions } from "@/components/QuickActions";
-import { TeacherApprovalDialog } from "@/components/TeacherApproval";
 import { toast } from "sonner";
 
 function generateId() {
@@ -35,7 +34,6 @@ export default function ChatPage() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(() => localStorage.getItem("vicen-bg"));
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
-  const [pendingApproval, setPendingApproval] = useState<{ conversationId: string; content: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -102,21 +100,29 @@ export default function ChatPage() {
       userMsg,
     ];
 
-    const finalTargetId = targetId;
+    const upsertAssistant = (chunk: string) => {
+      assistantContent += chunk;
+      const content = assistantContent;
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== targetId) return c;
+          const msgs = [...c.messages];
+          const last = msgs[msgs.length - 1];
+          if (last?.role === "assistant") {
+            msgs[msgs.length - 1] = { ...last, content };
+          } else {
+            msgs.push({ role: "assistant", content });
+          }
+          return { ...c, messages: msgs };
+        })
+      );
+    };
 
     try {
       await streamChat({
         messages: currentMessages,
-        onDelta: (chunk) => {
-          assistantContent += chunk;
-        },
-        onDone: () => {
-          setIsStreaming(false);
-          // Show teacher approval dialog instead of directly adding message
-          if (assistantContent) {
-            setPendingApproval({ conversationId: finalTargetId, content: assistantContent });
-          }
-        },
+        onDelta: upsertAssistant,
+        onDone: () => setIsStreaming(false),
         onError: (err) => {
           toast.error(err);
           setIsStreaming(false);
@@ -128,37 +134,9 @@ export default function ChatPage() {
     }
   };
 
-  const handleApprove = () => {
-    if (!pendingApproval) return;
-    const { conversationId, content } = pendingApproval;
-    setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id !== conversationId) return c;
-        return { ...c, messages: [...c.messages, { role: "assistant", content, approved: true }] };
-      })
-    );
-    setPendingApproval(null);
-  };
-
-  const handleReject = () => {
-    if (!pendingApproval) return;
-    const { conversationId } = pendingApproval;
-    setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id !== conversationId) return c;
-        return { ...c, messages: [...c.messages, { role: "assistant", content: "This response was rejected by the teacher.", approved: false }] };
-      })
-    );
-    setPendingApproval(null);
-  };
-
   const handleDelete = (id: string) => {
     setConversations((prev) => prev.filter((c) => c.id !== id));
     if (activeId === id) setActiveId(null);
-  };
-
-  const handleQuickAction = (prompt: string) => {
-    handleSend(prompt);
   };
 
   return (
@@ -174,14 +152,6 @@ export default function ChatPage() {
         <LoginScreen
           onGuest={() => handleLogin("guest")}
           onSignIn={() => handleLogin("signed-in")}
-        />
-      )}
-
-      {pendingApproval && (
-        <TeacherApprovalDialog
-          pendingContent={pendingApproval.content}
-          onApprove={handleApprove}
-          onReject={handleReject}
         />
       )}
 
@@ -242,14 +212,14 @@ export default function ChatPage() {
               <p className="text-muted-foreground text-sm max-w-sm">
                 Ask me anything — homework, coding, ideas, explanations. I'll give you clear, thoughtful answers.
               </p>
-              <QuickActions onSelect={handleQuickAction} />
+              <QuickActions onSelect={handleSend} />
             </div>
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
               {active.messages.map((m, i) => (
                 <ChatMessage key={i} message={m} />
               ))}
-              {isStreaming && (
+              {isStreaming && active.messages[active.messages.length - 1]?.role === "user" && (
                 <TypingIndicator />
               )}
               <div ref={messagesEndRef} />
@@ -257,7 +227,7 @@ export default function ChatPage() {
           )}
         </div>
 
-        <ChatInput onSend={handleSend} disabled={isStreaming || !!pendingApproval} />
+        <ChatInput onSend={handleSend} disabled={isStreaming} />
       </div>
     </div>
   );
