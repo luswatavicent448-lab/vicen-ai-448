@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Menu, Sparkles, Settings } from "lucide-react";
+import { Menu, Sparkles, Settings, LogOut } from "lucide-react";
 import { Conversation, Message } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
 import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { LoginScreen } from "@/components/LoginScreen";
 import { QuickActions } from "@/components/QuickActions";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 function generateId() {
