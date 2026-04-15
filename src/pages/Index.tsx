@@ -224,17 +224,28 @@ export default function ChatPage() {
             </div>
             <span className="font-semibold text-base tracking-tight">Vicen AI</span>
             {userMode && (
-              <span className="text-xs text-muted-foreground ml-1">
-                ({userMode === "guest" ? "Guest" : "Signed in"})
+              <span className="text-xs text-muted-foreground ml-1 truncate max-w-[120px]">
+                ({userMode === "guest" ? "Guest" : userEmail || "Signed in"})
               </span>
             )}
           </div>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {userMode === "signed-in" && (
+              <button
+                onClick={handleSignOut}
+                className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin">
