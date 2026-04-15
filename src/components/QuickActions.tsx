@@ -1,7 +1,5 @@
 import { ImageIcon, FileText, Lightbulb, Brain, Calendar } from "lucide-react";
 
-import { ImageIcon, FileText, Lightbulb, Brain, Calendar } from "lucide-react";
-
 const actions = [
   { label: "Today's date", icon: Calendar, prompt: "What is today's date?" },
   { label: "Create image", icon: ImageIcon, prompt: "Create an image for me" },

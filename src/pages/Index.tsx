@@ -151,7 +151,7 @@ export default function ChatPage() {
       {showLogin && (
         <LoginScreen
           onGuest={() => handleLogin("guest")}
-          onSignIn={() => handleLogin("signed-in")}
+          onSignedIn={() => handleLogin("signed-in")}
         />
       )}
 
