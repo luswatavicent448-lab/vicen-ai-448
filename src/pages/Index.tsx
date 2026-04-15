@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Menu, Sparkles, Settings, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Conversation, Message } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
 import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
-import { SettingsPanel } from "@/components/SettingsPanel";
 import { LoginScreen } from "@/components/LoginScreen";
 import { QuickActions } from "@/components/QuickActions";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,13 +26,13 @@ function saveConversations(convos: Conversation[]) {
 }
 
 export default function ChatPage() {
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("vicen-theme") as "dark" | "light") || "dark");
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(() => localStorage.getItem("vicen-bg"));
+  const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
+  const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
   const [userEmail, setUserEmail] = useState<string | null>(null);
