@@ -36,7 +36,12 @@ export default function ChatPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Listen for auth state changes (handles Google OAuth redirect)
+  // Apply saved theme on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("vicen-theme") || "dark";
+    document.documentElement.classList.toggle("light", saved === "light");
+  }, []);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
