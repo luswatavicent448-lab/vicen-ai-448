@@ -89,6 +89,14 @@ export default function ChatPage() {
     setShowLogin(false);
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("vicen-user-mode");
+    setUserMode("");
+    setUserEmail(null);
+    setShowLogin(true);
+  };
+
   const createConversation = useCallback((firstMessage?: string): string => {
     const id = generateId();
     const convo: Conversation = {
