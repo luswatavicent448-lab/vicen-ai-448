@@ -1,4 +1,4 @@
-import { ImageIcon, FileText, Lightbulb, Brain } from "lucide-react";
+import { ImageIcon, FileText, Lightbulb, Brain, Calendar } from "lucide-react";
 
 import { ImageIcon, FileText, Lightbulb, Brain, Calendar } from "lucide-react";
 
