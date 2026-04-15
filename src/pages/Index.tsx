@@ -33,8 +33,6 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
-  const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
-  const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -63,15 +61,6 @@ export default function ChatPage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("light", theme === "light");
-    localStorage.setItem("vicen-theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
-    if (backgroundImage) localStorage.setItem("vicen-bg", backgroundImage);
-    else localStorage.removeItem("vicen-bg");
-  }, [backgroundImage]);
 
   const active = conversations.find((c) => c.id === activeId) || null;
 
@@ -175,14 +164,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div
-      className="flex h-dvh overflow-hidden transition-colors duration-300"
-      style={backgroundImage ? {
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      } : undefined}
-    >
+    <div className="flex h-dvh overflow-hidden transition-colors duration-300">
       {showLogin && (
         <LoginScreen
           onGuest={() => handleLogin("guest")}
@@ -200,18 +182,8 @@ export default function ChatPage() {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <SettingsPanel
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        theme={theme}
-        onThemeChange={setTheme}
-        backgroundImage={backgroundImage}
-        onBackgroundChange={setBackgroundImage}
-        onBackgroundClear={() => setBackgroundImage(null)}
-      />
-
       <div className="flex-1 flex flex-col min-w-0">
-        <header className={`flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 ${backgroundImage ? "bg-background/80 backdrop-blur-md" : ""}`}>
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
             className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center sm:hidden"
@@ -240,7 +212,7 @@ export default function ChatPage() {
               </button>
             )}
             <button
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => navigate("/settings")}
               className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
             >
               <Settings className="w-4 h-4" />
