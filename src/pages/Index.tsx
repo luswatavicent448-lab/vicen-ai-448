@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Menu, Sparkles, Settings } from "lucide-react";
+import { Menu, Sparkles, Settings, LogOut } from "lucide-react";
 import { Conversation, Message } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
 import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { LoginScreen } from "@/components/LoginScreen";
 import { QuickActions } from "@/components/QuickActions";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 function generateId() {
@@ -34,7 +35,33 @@ export default function ChatPage() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(() => localStorage.getItem("vicen-bg"));
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Listen for auth state changes (handles Google OAuth redirect)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUserEmail(session.user.email ?? null);
+        if (!localStorage.getItem("vicen-user-mode")) {
+          localStorage.setItem("vicen-user-mode", "signed-in");
+          setUserMode("signed-in");
+          setShowLogin(false);
+        }
+      }
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserEmail(session.user.email ?? null);
+        if (!localStorage.getItem("vicen-user-mode")) {
+          localStorage.setItem("vicen-user-mode", "signed-in");
+          setUserMode("signed-in");
+          setShowLogin(false);
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("light", theme === "light");
@@ -60,6 +87,14 @@ export default function ChatPage() {
     localStorage.setItem("vicen-user-mode", mode);
     setUserMode(mode);
     setShowLogin(false);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("vicen-user-mode");
+    setUserMode("");
+    setUserEmail(null);
+    setShowLogin(true);
   };
 
   const createConversation = useCallback((firstMessage?: string): string => {
@@ -151,7 +186,7 @@ export default function ChatPage() {
       {showLogin && (
         <LoginScreen
           onGuest={() => handleLogin("guest")}
-          onSignIn={() => handleLogin("signed-in")}
+          onSignedIn={() => handleLogin("signed-in")}
         />
       )}
 
@@ -189,17 +224,28 @@ export default function ChatPage() {
             </div>
             <span className="font-semibold text-base tracking-tight">Vicen AI</span>
             {userMode && (
-              <span className="text-xs text-muted-foreground ml-1">
-                ({userMode === "guest" ? "Guest" : "Signed in"})
+              <span className="text-xs text-muted-foreground ml-1 truncate max-w-[120px]">
+                ({userMode === "guest" ? "Guest" : userEmail || "Signed in"})
               </span>
             )}
           </div>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {userMode === "signed-in" && (
+              <button
+                onClick={handleSignOut}
+                className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin">

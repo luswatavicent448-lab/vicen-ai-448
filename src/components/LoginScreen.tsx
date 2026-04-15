@@ -1,12 +1,42 @@
+import { useState } from "react";
 import { Sparkles } from "lucide-react";
+import { lovable } from "@/integrations/lovable/index";
+import { toast } from "sonner";
 
 export function LoginScreen({
   onGuest,
-  onSignIn,
+  onSignedIn,
 }: {
   onGuest: () => void;
-  onSignIn: () => void;
+  onSignedIn: () => void;
 }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+
+      if (result.error) {
+        toast.error("Sign in failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      if (result.redirected) {
+        return; // browser will redirect
+      }
+
+      // Session set successfully
+      onSignedIn();
+    } catch {
+      toast.error("Sign in failed. Please try again.");
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-background/95 backdrop-blur-md z-50 flex items-center justify-center animate-fade-up">
       <div className="bg-card border border-border rounded-2xl p-8 w-[320px] text-center space-y-6">
@@ -19,12 +49,12 @@ export function LoginScreen({
         </div>
         <div className="space-y-3">
           <button
-            onClick={onSignIn}
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:brightness-110 transition-all"
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:brightness-110 transition-all disabled:opacity-50"
           >
-            Sign in
+            {loading ? "Signing in..." : "Sign in with Google"}
           </button>
-          <p className="text-xs text-muted-foreground">Already have an account</p>
           <button
             onClick={onGuest}
             className="w-full py-3 rounded-xl bg-secondary text-secondary-foreground font-medium text-sm hover:bg-secondary/80 transition-colors"
