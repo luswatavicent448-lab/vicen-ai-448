@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Menu, Sparkles, Settings, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Conversation, Message } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
 import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
-import { SettingsPanel } from "@/components/SettingsPanel";
 import { LoginScreen } from "@/components/LoginScreen";
 import { QuickActions } from "@/components/QuickActions";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,19 +26,22 @@ function saveConversations(convos: Conversation[]) {
 }
 
 export default function ChatPage() {
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("vicen-theme") as "dark" | "light") || "dark");
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(() => localStorage.getItem("vicen-bg"));
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Listen for auth state changes (handles Google OAuth redirect)
+  // Apply saved theme on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("vicen-theme") || "dark";
+    document.documentElement.classList.toggle("light", saved === "light");
+  }, []);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
@@ -63,15 +66,6 @@ export default function ChatPage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("light", theme === "light");
-    localStorage.setItem("vicen-theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
-    if (backgroundImage) localStorage.setItem("vicen-bg", backgroundImage);
-    else localStorage.removeItem("vicen-bg");
-  }, [backgroundImage]);
 
   const active = conversations.find((c) => c.id === activeId) || null;
 
@@ -175,14 +169,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div
-      className="flex h-dvh overflow-hidden transition-colors duration-300"
-      style={backgroundImage ? {
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      } : undefined}
-    >
+    <div className="flex h-dvh overflow-hidden transition-colors duration-300">
       {showLogin && (
         <LoginScreen
           onGuest={() => handleLogin("guest")}
@@ -200,18 +187,8 @@ export default function ChatPage() {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <SettingsPanel
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        theme={theme}
-        onThemeChange={setTheme}
-        backgroundImage={backgroundImage}
-        onBackgroundChange={setBackgroundImage}
-        onBackgroundClear={() => setBackgroundImage(null)}
-      />
-
       <div className="flex-1 flex flex-col min-w-0">
-        <header className={`flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 ${backgroundImage ? "bg-background/80 backdrop-blur-md" : ""}`}>
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
             className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center sm:hidden"
@@ -240,7 +217,7 @@ export default function ChatPage() {
               </button>
             )}
             <button
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => navigate("/settings")}
               className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
             >
               <Settings className="w-4 h-4" />
