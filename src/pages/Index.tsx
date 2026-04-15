@@ -35,7 +35,33 @@ export default function ChatPage() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(() => localStorage.getItem("vicen-bg"));
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Listen for auth state changes (handles Google OAuth redirect)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUserEmail(session.user.email ?? null);
+        if (!localStorage.getItem("vicen-user-mode")) {
+          localStorage.setItem("vicen-user-mode", "signed-in");
+          setUserMode("signed-in");
+          setShowLogin(false);
+        }
+      }
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserEmail(session.user.email ?? null);
+        if (!localStorage.getItem("vicen-user-mode")) {
+          localStorage.setItem("vicen-user-mode", "signed-in");
+          setUserMode("signed-in");
+          setShowLogin(false);
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("light", theme === "light");
