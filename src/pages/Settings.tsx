@@ -89,7 +89,7 @@ export default function SettingsPage() {
           <SelectField
             label="Language"
             value={settings.language}
-            options={[{ value: "english", label: "English" }, { value: "french", label: "French" }]}
+            options={[{ value: "english", label: "English" }, { value: "french", label: "French" }, { value: "german", label: "German" }, { value: "kiswahili", label: "Kiswahili" }, { value: "spanish", label: "Spanish" }, { value: "arabic", label: "Arabic" }, { value: "chinese", label: "Chinese" }]}
             onChange={(v) => update("language", v as ChatSettings["language"])}
           />
           <SelectField

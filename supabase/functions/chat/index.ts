@@ -26,7 +26,11 @@ function buildSystemPrompt(settings: Record<string, unknown> | undefined): strin
   const name = s.userName ? `The user's name is ${s.userName}.` : "";
 
   // Language
-  const lang = (s.language as string) || "english";
+  const langMap: Record<string, string> = {
+    english: "English", french: "French", german: "German",
+    kiswahili: "Kiswahili (Swahili)", spanish: "Spanish", arabic: "Arabic", chinese: "Chinese (Mandarin)",
+  };
+  const lang = langMap[(s.language as string)] || "English";
   const langRule = `You MUST respond ONLY in ${lang}. Do not mix languages unless the user explicitly asks.`;
 
   // Tone
