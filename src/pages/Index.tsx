@@ -152,6 +152,7 @@ export default function ChatPage() {
     try {
       await streamChat({
         messages: currentMessages,
+        settings: settings as unknown as Record<string, unknown>,
         onDelta: upsertAssistant,
         onDone: () => setIsStreaming(false),
         onError: (err) => {
