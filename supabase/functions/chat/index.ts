@@ -19,15 +19,80 @@ function getTodayDate(): string {
   return `Today is ${fullDate}. It is the ${dayOfYear}th day of the year, with ${remaining} days remaining.`;
 }
 
+function buildSystemPrompt(settings: Record<string, unknown> | undefined): string {
+  const dateInfo = getTodayDate();
+  const s = settings || {};
+
+  const name = s.userName ? `The user's name is ${s.userName}.` : "";
+
+  // Language
+  const lang = (s.language as string) || "english";
+  const langRule = `You MUST respond ONLY in ${lang}. Do not mix languages unless the user explicitly asks.`;
+
+  // Tone
+  const toneMap: Record<string, string> = {
+    friendly: "Use a casual, natural, warm tone with simple wording.",
+    formal: "Use a professional, structured, and polished tone.",
+    funny: "Use light humor and a playful tone, but remain respectful and accurate.",
+  };
+  const toneRule = toneMap[(s.tone as string)] || toneMap.friendly;
+
+  // Response length
+  const lengthMap: Record<string, string> = {
+    short: "Your response MUST be 1–3 sentences maximum. No extra explanation. Even for greetings, keep it to 1–3 sentences.",
+    medium: "Your response MUST be exactly 1 paragraph. Do not exceed one paragraph. Even for greetings, keep it to 1 paragraph.",
+    detailed: "You may give a detailed explanation, but avoid unnecessary filler. Stay focused and thorough.",
+  };
+  const lengthRule = lengthMap[(s.responseLength as string)] || lengthMap.medium;
+
+  // Subject
+  const subjectMap: Record<string, string> = {
+    math: "When explaining math, show step-by-step working clearly. Use numbered steps for calculations.",
+    biology: "For biology/science topics, give factual, clear, and simple explanations.",
+    ict: "For ICT/technology topics, give practical, clear explanations with examples when helpful.",
+    general: "Be concise and direct in your explanations.",
+  };
+  const subjectRule = subjectMap[(s.subject as string)] || subjectMap.general;
+
+  // Step by step
+  const stepRule = s.stepByStep ? "When solving problems, break them down step-by-step." : "";
+
+  // Follow-up questions
+  const followUp = s.followUpQuestions ? "End your response with a brief follow-up question to continue the conversation." : "Do NOT ask follow-up questions unless the user asks.";
+
+  // Content filter
+  const filterMap: Record<string, string> = {
+    strict: "Apply strict content filtering. Refuse inappropriate, harmful, or offensive requests.",
+    moderate: "Apply moderate content filtering. Avoid clearly harmful content but allow mature discussion.",
+    off: "",
+  };
+  const filterRule = filterMap[(s.contentFilter as string)] || filterMap.strict;
+
+  return [
+    `You are Vicen AI, a helpful and knowledgeable assistant.`,
+    name,
+    langRule,
+    toneRule,
+    `RESPONSE LENGTH RULE (MANDATORY — override all other behavior): ${lengthRule}`,
+    `SUBJECT STYLE: ${subjectRule}`,
+    stepRule,
+    followUp,
+    filterRule,
+    `Answer in clear paragraph form. Avoid bullet points or headings unless specifically asked.`,
+    `Current date information: ${dateInfo}`,
+    `ENFORCEMENT: These settings are mandatory system rules. Never ignore length limits, tone, or language settings for any reason.`,
+  ].filter(Boolean).join("\n\n");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages } = await req.json();
+    const { messages, settings } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const dateInfo = getTodayDate();
+    const systemPrompt = buildSystemPrompt(settings);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -38,10 +103,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          {
-            role: "system",
-            content: `You are Vicen AI, a helpful and knowledgeable assistant. Answer in clear paragraph form like well-structured exam answers. Avoid bullet points or headings unless specifically asked. Be thorough yet concise.\n\nCurrent date information: ${dateInfo}`
-          },
+          { role: "system", content: systemPrompt },
           ...messages,
         ],
         stream: true,
