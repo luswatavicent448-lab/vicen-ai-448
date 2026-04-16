@@ -52,7 +52,18 @@ function buildSystemPrompt(settings: Record<string, unknown> | undefined): strin
   // Subject
   const subjectMap: Record<string, string> = {
     math: "When explaining math, show step-by-step working clearly. Use numbered steps for calculations.",
+    physics: "For physics, explain concepts clearly with formulas and real-world examples.",
+    chemistry: "For chemistry, give factual explanations with chemical equations when relevant.",
     biology: "For biology/science topics, give factual, clear, and simple explanations.",
+    history: "For history, provide factual, chronological explanations with context.",
+    geography: "For geography, use clear spatial/factual explanations.",
+    english: "For English language topics, provide examples and translations when helpful.",
+    french: "For French language learning, provide examples and translations.",
+    german: "For German language learning, provide examples and translations.",
+    kiswahili: "For Kiswahili language learning, provide examples and translations.",
+    entrepreneurship: "For entrepreneurship, give practical business-oriented explanations.",
+    pe: "For physical education, explain techniques, rules, and health concepts clearly.",
+    cre: "For CRE (Christian Religious Education), provide respectful, factual explanations.",
     ict: "For ICT/technology topics, give practical, clear explanations with examples when helpful.",
     general: "Be concise and direct in your explanations.",
   };
