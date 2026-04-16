@@ -124,7 +124,16 @@ export default function SettingsPage() {
           <SelectField
             label="Subject"
             value={settings.subject}
-            options={[{ value: "general", label: "General" }, { value: "math", label: "Math" }, { value: "biology", label: "Biology" }, { value: "ict", label: "ICT" }]}
+            options={[
+              { value: "general", label: "General" }, { value: "math", label: "Mathematics" },
+              { value: "physics", label: "Physics" }, { value: "chemistry", label: "Chemistry" },
+              { value: "biology", label: "Biology" }, { value: "history", label: "History" },
+              { value: "geography", label: "Geography" }, { value: "english", label: "English" },
+              { value: "french", label: "French" }, { value: "german", label: "German" },
+              { value: "kiswahili", label: "Kiswahili" }, { value: "entrepreneurship", label: "Entrepreneurship" },
+              { value: "pe", label: "Physical Education" }, { value: "cre", label: "CRE" },
+              { value: "ict", label: "ICT" },
+            ]}
             onChange={(v) => update("subject", v as ChatSettings["subject"])}
           />
           <ToggleField label="Step-by-Step Solutions" checked={settings.stepByStep} onChange={(v) => update("stepByStep", v)} />

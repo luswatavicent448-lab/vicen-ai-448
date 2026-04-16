@@ -13,7 +13,7 @@ export type ChatSettings = {
   contentFilter: "strict" | "moderate" | "off";
 
   // Learning Mode
-  subject: "math" | "biology" | "ict" | "general";
+  subject: "general" | "math" | "physics" | "chemistry" | "biology" | "history" | "geography" | "english" | "french" | "german" | "kiswahili" | "entrepreneurship" | "pe" | "cre" | "ict";
   stepByStep: boolean;
 
   // Appearance
