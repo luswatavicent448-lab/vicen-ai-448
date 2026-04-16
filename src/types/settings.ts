@@ -1,7 +1,7 @@
 export type ChatSettings = {
   // Personalization
   userName: string;
-  language: "english" | "french";
+  language: "english" | "french" | "german" | "kiswahili" | "spanish" | "arabic" | "chinese";
   tone: "friendly" | "formal" | "funny";
 
   // AI Behavior
