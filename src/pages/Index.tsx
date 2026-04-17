@@ -45,24 +45,23 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
+    // Set up listener FIRST, then check existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUserEmail(session.user.email ?? null);
-        if (!localStorage.getItem("vicen-user-mode")) {
-          localStorage.setItem("vicen-user-mode", "signed-in");
-          setUserMode("signed-in");
-          setShowLogin(false);
-        }
+        localStorage.setItem("vicen-user-mode", "signed-in");
+        setUserMode("signed-in");
+        setShowLogin(false);
+      } else if (event === "SIGNED_OUT") {
+        setUserEmail(null);
       }
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUserEmail(session.user.email ?? null);
-        if (!localStorage.getItem("vicen-user-mode")) {
-          localStorage.setItem("vicen-user-mode", "signed-in");
-          setUserMode("signed-in");
-          setShowLogin(false);
-        }
+        localStorage.setItem("vicen-user-mode", "signed-in");
+        setUserMode("signed-in");
+        setShowLogin(false);
       }
     });
     return () => subscription.unsubscribe();
@@ -91,6 +90,7 @@ export default function ChatPage() {
     setUserMode("");
     setUserEmail(null);
     setShowLogin(true);
+    toast.success("Signed out");
   };
 
   const createConversation = useCallback((firstMessage?: string): string => {
