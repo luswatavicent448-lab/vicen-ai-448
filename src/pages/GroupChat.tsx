@@ -390,17 +390,22 @@ export default function GroupChat() {
         ) : (
           messages.map((m) => {
             const mine = m.user_id === userId;
+            const isBot = m.sender_name?.startsWith("VICEN AI");
             return (
               <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
                     mine
                       ? "bg-primary text-primary-foreground rounded-br-md"
+                      : isBot
+                      ? "bg-accent/30 text-foreground border border-primary/30 rounded-bl-md"
                       : "bg-secondary text-foreground rounded-bl-md"
                   }`}
                 >
                   {!mine && (
-                    <p className="text-xs font-semibold opacity-70 mb-0.5">{m.sender_name}</p>
+                    <p className={`text-xs font-semibold mb-0.5 ${isBot ? "text-primary" : "opacity-70"}`}>
+                      {m.sender_name}
+                    </p>
                   )}
                   <p className="whitespace-pre-wrap break-words">{m.content}</p>
                 </div>
