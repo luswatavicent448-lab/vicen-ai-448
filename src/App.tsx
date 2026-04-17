@@ -8,6 +8,7 @@ import Settings from "./pages/Settings.tsx";
 import Notes from "./pages/Notes.tsx";
 import PastPapers from "./pages/PastPapers.tsx";
 import Quiz from "./pages/Quiz.tsx";
+import GroupChat from "./pages/GroupChat.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/notes" element={<Notes />} />
           <Route path="/past-papers" element={<PastPapers />} />
           <Route path="/quiz" element={<Quiz />} />
+          <Route path="/group-chat" element={<GroupChat />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

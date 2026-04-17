@@ -1,4 +1,4 @@
-import { ImageIcon, FileText, Lightbulb, Brain, Calendar, StickyNote, BookOpen } from "lucide-react";
+import { ImageIcon, FileText, Lightbulb, Brain, Calendar, StickyNote, BookOpen, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const chatActions = [
@@ -12,6 +12,7 @@ const navActions = [
   { label: "Notes", icon: StickyNote, path: "/notes" },
   { label: "Past Papers", icon: BookOpen, path: "/past-papers" },
   { label: "Quiz", icon: Brain, path: "/quiz" },
+  { label: "Group Chat", icon: Users, path: "/group-chat" },
 ];
 
 export function QuickActions({ onSelect }: { onSelect: (prompt: string) => void }) {
