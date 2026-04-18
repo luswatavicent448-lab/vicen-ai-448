@@ -54,6 +54,16 @@ export default function GroupChat() {
   const endRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
 
+  // Voice recording
+  const [recording, setRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [uploadingVoice, setUploadingVoice] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordStartRef = useRef<number>(0);
+  const recordTimerRef = useRef<number | null>(null);
+  const recordAutoStopRef = useRef<number | null>(null);
+
   // Lobby state
   const [lobbyView, setLobbyView] = useState<LobbyView>("menu");
   const [createPrivate, setCreatePrivate] = useState(false);
