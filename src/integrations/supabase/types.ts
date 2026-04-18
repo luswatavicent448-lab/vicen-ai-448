@@ -51,22 +51,31 @@ export type Database = {
       }
       chat_rooms: {
         Row: {
+          code: string
           created_at: string
           created_by: string
           id: string
+          is_private: boolean
           name: string
+          password_hash: string | null
         }
         Insert: {
+          code: string
           created_at?: string
           created_by: string
           id?: string
+          is_private?: boolean
           name?: string
+          password_hash?: string | null
         }
         Update: {
+          code?: string
           created_at?: string
           created_by?: string
           id?: string
+          is_private?: boolean
           name?: string
+          password_hash?: string | null
         }
         Relationships: []
       }
@@ -170,9 +179,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_room_with_code: {
+        Args: {
+          _display_name: string
+          _is_private: boolean
+          _name: string
+          _password: string
+        }
+        Returns: {
+          code: string
+          id: string
+        }[]
+      }
       is_room_member: {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
+      }
+      join_room_with_code: {
+        Args: { _code: string; _display_name: string; _password: string }
+        Returns: string
       }
     }
     Enums: {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Send, Link as LinkIcon, Users, LogOut, Plus } from "lucide-react";
+import { ArrowLeft, Send, Copy, Users, LogOut, Plus, Lock, Globe, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -21,12 +21,21 @@ type Member = {
   last_seen: string;
 };
 
-type Room = { id: string; name: string; created_by: string };
+type Room = {
+  id: string;
+  name: string;
+  created_by: string;
+  code: string;
+  is_private: boolean;
+};
+
+type LobbyView = "menu" | "create" | "join";
 
 export default function GroupChat() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const roomId = searchParams.get("room");
+  const codeParam = searchParams.get("code");
 
   const [userId, setUserId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState(
@@ -41,6 +50,13 @@ export default function GroupChat() {
   const [showMembers, setShowMembers] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
+
+  // Lobby state
+  const [lobbyView, setLobbyView] = useState<LobbyView>("menu");
+  const [createPrivate, setCreatePrivate] = useState(false);
+  const [createPassword, setCreatePassword] = useState("");
+  const [joinCode, setJoinCode] = useState(codeParam?.toUpperCase() || "");
+  const [joinPassword, setJoinPassword] = useState("");
 
   // Auth check
   useEffect(() => {
@@ -58,13 +74,20 @@ export default function GroupChat() {
     });
   }, [navigate, displayName]);
 
-  // Load room + join + subscribe
+  // If arriving with ?code=XXXX (and no room yet), prefill join view
+  useEffect(() => {
+    if (codeParam && !roomId && displayName) {
+      setLobbyView("join");
+      setJoinCode(codeParam.toUpperCase());
+    }
+  }, [codeParam, roomId, displayName]);
+
+  // Load room + subscribe (membership is created via RPC, not here)
   useEffect(() => {
     if (!roomId || !userId || !displayName) return;
     let cancelled = false;
 
     (async () => {
-      // Load room
       const { data: roomData, error: roomErr } = await supabase
         .from("chat_rooms")
         .select("*")
@@ -76,15 +99,15 @@ export default function GroupChat() {
         setSearchParams({});
         return;
       }
-      setRoom(roomData);
+      setRoom(roomData as Room);
 
-      // Join (upsert membership)
-      await supabase.from("room_members").upsert(
-        { room_id: roomId, user_id: userId, display_name: displayName, is_typing: false, last_seen: new Date().toISOString() },
-        { onConflict: "room_id,user_id" }
-      );
+      // Touch membership timestamp (must already be a member via RPC)
+      await supabase
+        .from("room_members")
+        .update({ last_seen: new Date().toISOString(), display_name: displayName })
+        .eq("room_id", roomId)
+        .eq("user_id", userId);
 
-      // Load existing messages
       const { data: msgs } = await supabase
         .from("chat_messages")
         .select("*")
@@ -92,7 +115,6 @@ export default function GroupChat() {
         .order("created_at", { ascending: true });
       if (!cancelled && msgs) setMessages(msgs);
 
-      // Load members
       const { data: mems } = await supabase
         .from("room_members")
         .select("*")
@@ -100,7 +122,6 @@ export default function GroupChat() {
       if (!cancelled && mems) setMembers(mems);
     })();
 
-    // Realtime subscriptions
     const channel = supabase
       .channel(`room:${roomId}`)
       .on(
@@ -129,12 +150,10 @@ export default function GroupChat() {
     };
   }, [roomId, userId, displayName, setSearchParams]);
 
-  // Auto-scroll
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  // Leave on unmount
   useEffect(() => {
     return () => {
       if (roomId && userId) {
@@ -150,27 +169,62 @@ export default function GroupChat() {
     setDisplayName(trimmed);
   };
 
-  const createRoom = async () => {
+  const handleCreateRoom = async () => {
     if (!userId || !displayName) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("chat_rooms")
-      .insert({ name: `${displayName}'s room`, created_by: userId })
-      .select()
-      .single();
-    setLoading(false);
-    if (error || !data) {
-      toast.error("Could not create room");
+    if (createPrivate && !createPassword.trim()) {
+      toast.error("Please set a password for the private room");
       return;
     }
-    setSearchParams({ room: data.id });
+    setLoading(true);
+    const { data, error } = await supabase.rpc("create_room_with_code", {
+      _name: `${displayName}'s room`,
+      _is_private: createPrivate,
+      _password: createPrivate ? createPassword : null,
+      _display_name: displayName,
+    });
+    setLoading(false);
+    if (error || !data || !data[0]) {
+      toast.error(error?.message || "Could not create room");
+      return;
+    }
+    toast.success(`Room created! Code: ${data[0].code}`);
+    setCreatePassword("");
+    setSearchParams({ room: data[0].id });
+  };
+
+  const handleJoinRoom = async () => {
+    if (!userId || !displayName) return;
+    const code = joinCode.trim().toUpperCase();
+    if (!code) {
+      toast.error("Enter a room code");
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await supabase.rpc("join_room_with_code", {
+      _code: code,
+      _password: joinPassword || null,
+      _display_name: displayName,
+    });
+    setLoading(false);
+    if (error || !data) {
+      toast.error(error?.message || "Could not join room");
+      return;
+    }
+    setJoinPassword("");
+    setSearchParams({ room: data as string });
   };
 
   const copyInvite = () => {
-    if (!roomId) return;
-    const url = `${window.location.origin}/group-chat?room=${roomId}`;
+    if (!room) return;
+    const url = `${window.location.origin}/group-chat?code=${room.code}`;
     navigator.clipboard.writeText(url);
-    toast.success("Invite link copied!");
+    toast.success(`Invite link copied! Code: ${room.code}`);
+  };
+
+  const copyCode = () => {
+    if (!room) return;
+    navigator.clipboard.writeText(room.code);
+    toast.success("Code copied!");
   };
 
   const setTyping = useCallback(
@@ -208,7 +262,6 @@ export default function GroupChat() {
       return;
     }
 
-    // Trigger AI bot reply when mentioned, greeted, or asked a question
     const lower = trimmed.toLowerCase();
     const shouldReply =
       lower.includes("@vicen") ||
@@ -242,6 +295,7 @@ export default function GroupChat() {
     setRoom(null);
     setMessages([]);
     setMembers([]);
+    setLobbyView("menu");
   };
 
   const typingNames = members
@@ -276,48 +330,134 @@ export default function GroupChat() {
     );
   }
 
-  // ---- Render: Room lobby ----
+  // ---- Render: Lobby (menu / create / join) ----
   if (!roomId || !room) {
     return (
       <div className="h-dvh flex flex-col bg-background">
         <header className="flex items-center gap-3 px-4 py-3 border-b border-border">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => (lobbyView === "menu" ? navigate("/") : setLobbyView("menu"))}
             className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h1 className="font-semibold text-base">Group Chat</h1>
+          <h1 className="font-semibold text-base">
+            {lobbyView === "create" ? "Create Room" : lobbyView === "join" ? "Join Room" : "Group Chat"}
+          </h1>
         </header>
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Users className="w-8 h-8 text-primary" />
-          </div>
-          <h2 className="text-xl font-bold">Start a chat</h2>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            Create a room and share the invite link with friends to chat in real time.
-          </p>
-          <button
-            onClick={createRoom}
-            disabled={loading}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-50"
-          >
-            <Plus className="w-4 h-4" />
-            {loading ? "Creating…" : "Create Room"}
-          </button>
-          <p className="text-xs text-muted-foreground">
-            Joined as <span className="font-medium text-foreground">{displayName}</span>{" "}
-            <button
-              onClick={() => {
-                localStorage.removeItem("vicen-chat-name");
-                setDisplayName("");
-                setNameInput("");
-              }}
-              className="underline"
-            >
-              change
-            </button>
-          </p>
+
+        <div className="flex-1 overflow-y-auto px-6 py-8">
+          {lobbyView === "menu" && (
+            <div className="max-w-sm mx-auto flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Users className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-center">Start chatting</h2>
+              <p className="text-sm text-muted-foreground text-center">
+                Create a room or join one with a code.
+              </p>
+              <button
+                onClick={() => setLobbyView("create")}
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-primary-foreground font-medium"
+              >
+                <Plus className="w-4 h-4" /> Create Room
+              </button>
+              <button
+                onClick={() => setLobbyView("join")}
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-secondary text-foreground font-medium border border-border"
+              >
+                <KeyRound className="w-4 h-4" /> Join with Code
+              </button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Joined as <span className="font-medium text-foreground">{displayName}</span>{" "}
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("vicen-chat-name");
+                    setDisplayName("");
+                    setNameInput("");
+                  }}
+                  className="underline"
+                >
+                  change
+                </button>
+              </p>
+            </div>
+          )}
+
+          {lobbyView === "create" && (
+            <div className="max-w-sm mx-auto space-y-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Choose a room type. You'll get a 6-character code to share.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setCreatePrivate(false)}
+                  className={`px-3 py-3 rounded-xl border text-sm font-medium flex flex-col items-center gap-1 ${
+                    !createPrivate
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-secondary border-border text-foreground"
+                  }`}
+                >
+                  <Globe className="w-4 h-4" />
+                  Public
+                </button>
+                <button
+                  onClick={() => setCreatePrivate(true)}
+                  className={`px-3 py-3 rounded-xl border text-sm font-medium flex flex-col items-center gap-1 ${
+                    createPrivate
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-secondary border-border text-foreground"
+                  }`}
+                >
+                  <Lock className="w-4 h-4" />
+                  Private
+                </button>
+              </div>
+              {createPrivate && (
+                <input
+                  type="password"
+                  value={createPassword}
+                  onChange={(e) => setCreatePassword(e.target.value)}
+                  placeholder="Set a password 🔑"
+                  className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              )}
+              <button
+                onClick={handleCreateRoom}
+                disabled={loading}
+                className="w-full px-4 py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-50"
+              >
+                {loading ? "Creating…" : `Create ${createPrivate ? "Private" : "Public"} Room`}
+              </button>
+            </div>
+          )}
+
+          {lobbyView === "join" && (
+            <div className="max-w-sm mx-auto space-y-4">
+              <p className="text-sm text-muted-foreground text-center">Enter your access code ✨</p>
+              <input
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="Room Code"
+                maxLength={6}
+                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary tracking-widest text-center font-mono text-lg uppercase"
+              />
+              <input
+                type="password"
+                value={joinPassword}
+                onChange={(e) => setJoinPassword(e.target.value)}
+                placeholder="Password (if private)"
+                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                onClick={handleJoinRoom}
+                disabled={loading || !joinCode.trim()}
+                className="w-full px-4 py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-50"
+              >
+                {loading ? "Joining…" : "Join 🚀"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -335,10 +475,21 @@ export default function GroupChat() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="font-semibold text-sm truncate">{room.name}</h1>
-          <p className="text-xs text-muted-foreground">
-            {members.length} {members.length === 1 ? "member" : "members"}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <h1 className="font-semibold text-sm truncate">{room.name}</h1>
+            {room.is_private ? (
+              <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+            ) : (
+              <Globe className="w-3 h-3 text-muted-foreground shrink-0" />
+            )}
+          </div>
+          <button
+            onClick={copyCode}
+            className="text-xs text-muted-foreground font-mono hover:text-foreground"
+            title="Copy room code"
+          >
+            {room.code} · {members.length} {members.length === 1 ? "member" : "members"}
+          </button>
         </div>
         <button
           onClick={() => setShowMembers((s) => !s)}
@@ -352,7 +503,7 @@ export default function GroupChat() {
           className="w-9 h-9 rounded-lg bg-primary/20 text-primary flex items-center justify-center"
           title="Copy invite link"
         >
-          <LinkIcon className="w-4 h-4" />
+          <Copy className="w-4 h-4" />
         </button>
         <button
           onClick={leaveRoom}
