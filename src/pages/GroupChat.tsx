@@ -695,26 +695,59 @@ export default function GroupChat() {
         <div ref={endRef} />
       </div>
 
-      <div className="p-3 border-t border-border shrink-0 flex gap-2">
-        <input
-          value={text}
-          onChange={(e) => handleTyping(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              sendMessage();
-            }
-          }}
-          placeholder="Type a message…"
-          className="flex-1 px-4 py-2.5 rounded-xl bg-secondary text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-        />
-        <button
-          onClick={sendMessage}
-          disabled={!text.trim()}
-          className="w-11 h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50"
-        >
-          <Send className="w-4 h-4" />
-        </button>
+      <div className="p-3 border-t border-border shrink-0 flex gap-2 items-center">
+        {recording ? (
+          <div className="flex-1 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/40">
+            <span className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse" />
+            <span className="text-sm font-medium text-destructive">
+              Recording… {formatDuration(recordSeconds * 1000)}
+            </span>
+            <span className="ml-auto text-[11px] text-muted-foreground">Tap stop to send</span>
+          </div>
+        ) : (
+          <input
+            value={text}
+            onChange={(e) => handleTyping(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+            placeholder={uploadingVoice ? "Sending voice…" : "Type a message…"}
+            disabled={uploadingVoice}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-secondary text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm disabled:opacity-60"
+          />
+        )}
+
+        {!recording && !text.trim() ? (
+          <button
+            onClick={startRecording}
+            disabled={uploadingVoice}
+            className="w-11 h-11 rounded-xl bg-secondary text-foreground border border-border flex items-center justify-center disabled:opacity-50"
+            title="Record voice message"
+            aria-label="Record voice message"
+          >
+            <Mic className="w-4 h-4" />
+          </button>
+        ) : recording ? (
+          <button
+            onClick={stopRecording}
+            className="w-11 h-11 rounded-xl bg-destructive text-destructive-foreground flex items-center justify-center animate-pulse"
+            title="Stop and send"
+            aria-label="Stop recording"
+          >
+            <Square className="w-4 h-4 fill-current" />
+          </button>
+        ) : (
+          <button
+            onClick={sendMessage}
+            disabled={!text.trim() || uploadingVoice}
+            className="w-11 h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </div>
   );
