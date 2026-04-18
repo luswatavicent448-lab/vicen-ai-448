@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Send, Copy, Users, LogOut, Plus, Lock, Globe, KeyRound } from "lucide-react";
+import { ArrowLeft, Send, Copy, Users, LogOut, Plus, Lock, Globe, KeyRound, Mic, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -11,6 +11,9 @@ type Message = {
   sender_name: string;
   content: string;
   created_at: string;
+  message_type?: string | null;
+  attachment_url?: string | null;
+  attachment_duration_ms?: number | null;
 };
 
 type Member = {
