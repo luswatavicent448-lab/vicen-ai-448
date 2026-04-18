@@ -311,6 +311,100 @@ export default function GroupChat() {
     setLobbyView("menu");
   };
 
+  const stopRecording = useCallback(() => {
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+    if (recordTimerRef.current) {
+      window.clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    if (recordAutoStopRef.current) {
+      window.clearTimeout(recordAutoStopRef.current);
+      recordAutoStopRef.current = null;
+    }
+  }, []);
+
+  const startRecording = async () => {
+    if (!roomId || !userId || recording || uploadingVoice) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error("Microphone not supported on this device");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : "";
+      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+      recordStartRef.current = Date.now();
+      setRecordSeconds(0);
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRecording(false);
+        const duration = Date.now() - recordStartRef.current;
+        const chunks = audioChunksRef.current;
+        audioChunksRef.current = [];
+        if (chunks.length === 0 || duration < 500) {
+          toast.message("Recording too short");
+          return;
+        }
+        const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        const ext = (recorder.mimeType || "audio/webm").includes("mp4") ? "mp4" : "webm";
+        const path = `${userId}/${roomId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+        setUploadingVoice(true);
+        const { error: upErr } = await supabase.storage
+          .from("voice-messages")
+          .upload(path, blob, { contentType: blob.type, upsert: false });
+        if (upErr) {
+          setUploadingVoice(false);
+          toast.error("Upload failed");
+          return;
+        }
+        const { data: pub } = supabase.storage.from("voice-messages").getPublicUrl(path);
+        const { error: insErr } = await supabase.from("chat_messages").insert({
+          room_id: roomId,
+          user_id: userId,
+          sender_name: displayName,
+          content: "🎤 Voice message",
+          message_type: "voice",
+          attachment_url: pub.publicUrl,
+          attachment_duration_ms: duration,
+        });
+        setUploadingVoice(false);
+        if (insErr) toast.error("Failed to send voice");
+      };
+
+      recorder.start();
+      setRecording(true);
+      recordTimerRef.current = window.setInterval(() => {
+        setRecordSeconds(Math.floor((Date.now() - recordStartRef.current) / 1000));
+      }, 250);
+      // Auto-stop after 60s
+      recordAutoStopRef.current = window.setTimeout(() => stopRecording(), 60_000);
+    } catch (err) {
+      console.error(err);
+      toast.error("Microphone permission denied");
+    }
+  };
+
+  const formatDuration = (ms: number) => {
+    const total = Math.max(0, Math.round(ms / 1000));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   const typingNames = members
     .filter((m) => m.is_typing && m.user_id !== userId)
     .map((m) => m.display_name);
