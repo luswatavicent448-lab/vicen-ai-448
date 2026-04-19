@@ -176,7 +176,7 @@ export default function ChatPage() {
       await streamChat({
         messages: currentMessages,
         settings: settings as unknown as Record<string, unknown>,
-        browsing,
+        browsing: effectiveBrowsing,
         onDelta: upsertAssistant,
         onCitations: setCitations,
         onDone: () => setIsStreaming(false),
