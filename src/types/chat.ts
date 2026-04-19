@@ -1,6 +1,12 @@
+export type Citation = {
+  title: string;
+  url: string;
+};
+
 export type Message = {
   role: "user" | "assistant";
   content: string;
+  citations?: Citation[];
 };
 
 export type Conversation = {
