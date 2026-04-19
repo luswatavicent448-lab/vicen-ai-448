@@ -19,13 +19,12 @@ function getTodayDate(): string {
   return `Today is ${fullDate}. It is the ${dayOfYear}th day of the year, with ${remaining} days remaining.`;
 }
 
-function buildSystemPrompt(settings: Record<string, unknown> | undefined): string {
+function buildSystemPrompt(settings: Record<string, unknown> | undefined, browsing: boolean): string {
   const dateInfo = getTodayDate();
   const s = settings || {};
 
   const name = s.userName ? `The user's name is ${s.userName}.` : "";
 
-  // Language
   const langMap: Record<string, string> = {
     english: "English", french: "French", german: "German",
     kiswahili: "Kiswahili (Swahili)", spanish: "Spanish", arabic: "Arabic", chinese: "Chinese (Mandarin)",
@@ -33,7 +32,6 @@ function buildSystemPrompt(settings: Record<string, unknown> | undefined): strin
   const lang = langMap[(s.language as string)] || "English";
   const langRule = `You MUST respond ONLY in ${lang}. Do not mix languages unless the user explicitly asks.`;
 
-  // Tone
   const toneMap: Record<string, string> = {
     friendly: "Use a casual, natural, warm tone with simple wording.",
     formal: "Use a professional, structured, and polished tone.",
@@ -41,7 +39,6 @@ function buildSystemPrompt(settings: Record<string, unknown> | undefined): strin
   };
   const toneRule = toneMap[(s.tone as string)] || toneMap.friendly;
 
-  // Response length
   const lengthMap: Record<string, string> = {
     short: "Your response MUST be 1–3 sentences maximum. No extra explanation. Even for greetings, keep it to 1–3 sentences.",
     medium: "Your response MUST be exactly 1 paragraph. Do not exceed one paragraph. Even for greetings, keep it to 1 paragraph.",
@@ -49,7 +46,6 @@ function buildSystemPrompt(settings: Record<string, unknown> | undefined): strin
   };
   const lengthRule = lengthMap[(s.responseLength as string)] || lengthMap.medium;
 
-  // Subject
   const subjectMap: Record<string, string> = {
     math: "When explaining math, show step-by-step working clearly. Use numbered steps for calculations.",
     physics: "For physics, explain concepts clearly with formulas and real-world examples.",
@@ -69,19 +65,19 @@ function buildSystemPrompt(settings: Record<string, unknown> | undefined): strin
   };
   const subjectRule = subjectMap[(s.subject as string)] || subjectMap.general;
 
-  // Step by step
   const stepRule = s.stepByStep ? "When solving problems, break them down step-by-step." : "";
-
-  // Follow-up questions
   const followUp = s.followUpQuestions ? "End your response with a brief follow-up question to continue the conversation." : "Do NOT ask follow-up questions unless the user asks.";
 
-  // Content filter
   const filterMap: Record<string, string> = {
     strict: "Apply strict content filtering. Refuse inappropriate, harmful, or offensive requests.",
     moderate: "Apply moderate content filtering. Avoid clearly harmful content but allow mature discussion.",
     off: "",
   };
   const filterRule = filterMap[(s.contentFilter as string)] || filterMap.strict;
+
+  const browsingRule = browsing
+    ? "BROWSING MODE IS ON: You have live web search. Use the latest information from the web. Be factual and cite specific facts from sources."
+    : "";
 
   return [
     `You are Vicen AI, a helpful and knowledgeable assistant.`,
@@ -93,6 +89,7 @@ function buildSystemPrompt(settings: Record<string, unknown> | undefined): strin
     stepRule,
     followUp,
     filterRule,
+    browsingRule,
     `Answer in clear paragraph form. Avoid bullet points or headings unless specifically asked.`,
     `Current date information: ${dateInfo}`,
     `ENFORCEMENT: These settings are mandatory system rules. Never ignore length limits, tone, or language settings for any reason.`,
@@ -103,11 +100,28 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, settings } = await req.json();
+    const { messages, settings, browsing } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = buildSystemPrompt(settings);
+    const systemPrompt = buildSystemPrompt(settings, !!browsing);
+
+    // When browsing is enabled, use a Gemini model with google_search grounding
+    const model = browsing ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
+
+    const body: Record<string, unknown> = {
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages,
+      ],
+      stream: true,
+    };
+
+    if (browsing) {
+      // Lovable AI Gateway passes Google's google_search tool through for Gemini models.
+      body.tools = [{ google_search: {} }];
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -115,14 +129,7 @@ serve(async (req) => {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-        stream: true,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

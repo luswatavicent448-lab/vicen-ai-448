@@ -1,12 +1,17 @@
 import { useState, useRef, KeyboardEvent } from "react";
-import { Send } from "lucide-react";
+import { Send, Globe } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function ChatInput({
   onSend,
   disabled,
+  browsing,
+  onToggleBrowsing,
 }: {
   onSend: (text: string) => void;
   disabled: boolean;
+  browsing: boolean;
+  onToggleBrowsing: () => void;
 }) {
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -36,13 +41,28 @@ export function ChatInput({
 
   return (
     <div className="border-t border-border bg-background p-3 sm:p-4">
-      <div className="max-w-3xl mx-auto flex gap-3 items-end">
+      <div className="max-w-3xl mx-auto flex gap-2 items-end">
+        <button
+          type="button"
+          onClick={onToggleBrowsing}
+          title={browsing ? "Browsing on — click to disable" : "Enable browsing for live web answers"}
+          aria-pressed={browsing}
+          className={cn(
+            "shrink-0 h-10 px-3 rounded-xl flex items-center gap-1.5 text-xs font-medium transition-all",
+            browsing
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "bg-secondary text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Globe className="w-4 h-4" />
+          <span className="hidden sm:inline">Browse</span>
+        </button>
         <textarea
           ref={inputRef}
           value={text}
           onChange={(e) => { setText(e.target.value); handleInput(); }}
           onKeyDown={handleKeyDown}
-          placeholder="Ask anything..."
+          placeholder={browsing ? "Search the web..." : "Ask anything..."}
           rows={1}
           className="flex-1 resize-none bg-secondary text-foreground placeholder:text-muted-foreground rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 scrollbar-thin"
         />
