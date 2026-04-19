@@ -1,9 +1,10 @@
-import { ArrowLeft, User, Brain, Shield, BookOpen, Palette, Wrench } from "lucide-react";
+import { ArrowLeft, User, Brain, Shield, BookOpen, Palette, Wrench, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSettings } from "@/hooks/use-settings";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { ChatSettings } from "@/types/settings";
+import { AccountSection } from "@/components/AccountSection";
 
 function SelectField<K extends keyof ChatSettings>({
   label,
@@ -76,6 +77,10 @@ export default function SettingsPage() {
       </header>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <Section icon={KeyRound} title="Account">
+          <AccountSection />
+        </Section>
+
         <Section icon={User} title="Personalization">
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-foreground">Name</span>
