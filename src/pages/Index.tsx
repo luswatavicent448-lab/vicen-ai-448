@@ -114,6 +114,13 @@ export default function ChatPage() {
       targetId = createConversation(text);
     }
 
+    // Auto-enable browsing for this single message if the question is time-sensitive
+    const autoBrowse = !browsing && isTimeSensitive(text);
+    const effectiveBrowsing = browsing || autoBrowse;
+    if (autoBrowse) {
+      toast.info("🌐 Auto-enabled Browse for this question");
+    }
+
     const userMsg: Message = { role: "user", content: text };
 
     setConversations((prev) =>
