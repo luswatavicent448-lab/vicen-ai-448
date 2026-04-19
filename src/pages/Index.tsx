@@ -3,6 +3,7 @@ import { Menu, Sparkles, Settings, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Conversation, Message } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
+import { isTimeSensitive } from "@/lib/time-sensitive";
 import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
@@ -113,6 +114,13 @@ export default function ChatPage() {
       targetId = createConversation(text);
     }
 
+    // Auto-enable browsing for this single message if the question is time-sensitive
+    const autoBrowse = !browsing && isTimeSensitive(text);
+    const effectiveBrowsing = browsing || autoBrowse;
+    if (autoBrowse) {
+      toast.info("🌐 Auto-enabled Browse for this question");
+    }
+
     const userMsg: Message = { role: "user", content: text };
 
     setConversations((prev) =>
@@ -168,7 +176,7 @@ export default function ChatPage() {
       await streamChat({
         messages: currentMessages,
         settings: settings as unknown as Record<string, unknown>,
-        browsing,
+        browsing: effectiveBrowsing,
         onDelta: upsertAssistant,
         onCitations: setCitations,
         onDone: () => setIsStreaming(false),
