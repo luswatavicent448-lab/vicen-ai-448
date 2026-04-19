@@ -3,6 +3,7 @@ import { Menu, Sparkles, Settings, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Conversation, Message } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
+import { isTimeSensitive } from "@/lib/time-sensitive";
 import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
