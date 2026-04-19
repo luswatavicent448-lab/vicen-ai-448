@@ -33,6 +33,7 @@ export default function ChatPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -149,11 +150,27 @@ export default function ChatPage() {
       );
     };
 
+    const setCitations = (citations: { title: string; url: string }[]) => {
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== targetId) return c;
+          const msgs = [...c.messages];
+          const last = msgs[msgs.length - 1];
+          if (last?.role === "assistant") {
+            msgs[msgs.length - 1] = { ...last, citations };
+          }
+          return { ...c, messages: msgs };
+        })
+      );
+    };
+
     try {
       await streamChat({
         messages: currentMessages,
         settings: settings as unknown as Record<string, unknown>,
+        browsing,
         onDelta: upsertAssistant,
+        onCitations: setCitations,
         onDone: () => setIsStreaming(false),
         onError: (err) => {
           toast.error(err);
@@ -253,7 +270,18 @@ export default function ChatPage() {
           )}
         </div>
 
-        <ChatInput onSend={handleSend} disabled={isStreaming} />
+        <ChatInput
+          onSend={handleSend}
+          disabled={isStreaming}
+          browsing={browsing}
+          onToggleBrowsing={() => {
+            setBrowsing((b) => {
+              const next = !b;
+              toast.success(next ? "🌐 Browsing mode on" : "Browsing mode off");
+              return next;
+            });
+          }}
+        />
       </div>
     </div>
   );
