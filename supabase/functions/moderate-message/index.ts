@@ -20,39 +20,95 @@ const BOT_USER_ID = "00000000-0000-0000-0000-000000000bot";
 const BOT_NAME = "VICEN AI 🤖";
 
 // Seed abusive list — single tokens. Variations are handled by normalization.
-// English profanity + insults
 const SEED_BAD_WORDS = [
-  // English profanity
-  "fuck", "fucker", "fucking", "fuk", "fck", "motherfucker",
-  "shit", "shyt", "bullshit", "crap",
-  "bitch", "biatch", "btch",
-  "asshole", "ashole", "arsehole",
-  "dick", "dickhead", "prick", "cock",
+  // --- English profanity ---
+  "fuck", "fucker", "fucking", "fuk", "fck", "motherfucker", "mf",
+  "shit", "shyt", "bullshit", "crap", "crappy",
+  "bitch", "biatch", "btch", "bich",
+  "asshole", "ashole", "arsehole", "arse",
+  "dick", "dickhead", "prick", "cock", "cockhead",
   "pussy", "cunt", "twat",
   "bastard", "damn", "douche", "douchebag",
-  "wanker", "tosser",
-  "slut", "whore", "hoe",
-  "retard", "retarded",
-  "nigger", "nigga", "fag", "faggot",
-  // Insults
-  "idiot", "stupid", "fool", "dumb", "moron", "loser", "imbecile",
-  "scum", "trash", "garbage",
-  // Swahili
-  "nyoko", "pumbavu", "mjinga", "mavi", "shenzi", "malaya",
-  // Luganda (common offensive terms)
-  "musiru", "kasiru", "kifere", "kikoligo", "malaaya", "kasilamu",
-  "embwa", "kibwankulata", "muyaga", "kinusi",
+  "wanker", "tosser", "jerk",
+  "slut", "whore", "hoe", "skank", "thot",
+  "retard", "retarded", "spaz",
+  "nigger", "nigga", "fag", "faggot", "tranny", "dyke",
+  // English insults
+  "idiot", "stupid", "fool", "dumb", "dumbass", "moron", "loser", "imbecile",
+  "scum", "trash", "garbage", "freak",
+
+  // --- Swahili / Sheng (Kenya, Tanzania, Uganda) ---
+  "mavi",        // shit
+  "mshenzi", "shenzi",   // savage / barbarian (insult)
+  "pumbavu", "mpumbavu", // fool / idiot
+  "mjinga", "wajinga",   // stupid
+  "mjinga we", "punda",  // donkey (insult)
+  "malaya", "kahaba",    // prostitute
+  "nyoko", "nyokonyoko", // mother insult
+  "mbwa",                // dog (insult)
+  "kuma", "kumamako",    // strongest matusi (vulgar)
+  "mboo", "mbolo",       // vulgar male anatomy
+  "fala",                // fool
+  "zezeta", "zuzu",      // dim-witted
+  "tako", "matako",      // ass
+  "kojoa",               // urinate (vulgar usage)
+  "ushenzi",             // savagery
+  "umbwa", "umama",      // your-mother / dog insult
+  "buzi",                // sugar daddy / insult slang
+  "ngombe",              // cow (insult)
+  "kichaa",              // crazy person (insult)
+
+  // --- Luganda (Uganda) ---
+  "musiru", "kasiru", "basiru",       // fool / idiot
+  "kifere", "kiferenge",              // stupid / clumsy
+  "kikoligo",                         // crooked / insult
+  "malaaya",                          // prostitute
+  "kasilamu",                         // derogatory
+  "embwa", "mbwa",                    // dog (insult)
+  "kibwankulata",                     // worthless / insult
+  "muyaga", "kinusi",                 // wind-bag / smelly
+  "ekifere",                          // dimwit
+  "omusilu", "omusiru",               // fool variants
+  "kasajja", "kasiyira",              // derogatory persona terms
+  "kawala", "kawalakata",             // derogatory
+  "ssebo nange", "kifuba",            // insult expressions
+  "kabwa",                            // little dog (insult)
+  "nfuufu",                           // good-for-nothing
+  "kikomando ggwe",                   // street-tough insult
+  "lugezigezi",                       // arrogant fool
+  "kasita", "katemba",                // mocking
 ];
 
 // Multi-word phrases — checked against the spaced-normalized form
 const SEED_BAD_PHRASES = [
-  "fuck off", "fuck you", "fuck u", "f off",
+  // English
+  "fuck off", "fuck you", "fuck u", "f off", "f u",
   "shut up", "shut the fuck up", "stfu",
-  "go to hell", "kiss my ass",
+  "go to hell", "kiss my ass", "kiss my arse",
   "son of a bitch", "piece of shit",
-  "eat shit", "screw you",
+  "eat shit", "screw you", "up yours",
+  "your mom", "yo mama", "ur mom gay",
+
+  // Swahili / Sheng phrases
+  "mama yako", "shoga yako", "kuma mama",
+  "nenda kuzimu", "wewe ni mjinga", "wewe ni mshenzi",
+  "kichwa ngumu", "fala wewe",
+
   // Luganda phrases
-  "genda eri", "ozze nyabo", "musiru gwe",
+  "genda eri", "ozze nyabo", "musiru gwe", "musilu gwe",
+  "kibi nnyo", "ggwe musiru", "embwa ggwe",
+  "wuliriza musiru", "vva wano",
+];
+
+// Regional language markers — non-abusive but signal Swahili/Luganda context.
+// When detected, the abuse threshold lowers slightly to catch coded insults.
+const REGIONAL_MARKERS = [
+  // Swahili common particles/words
+  "wewe", "mimi", "yako", "yangu", "nini", "kwa", "nilikuwa", "habari",
+  "sasa", "leo", "kesho", "ndio", "hapana", "asante", "karibu",
+  // Luganda common particles/words
+  "ggwe", "nze", "lwaki", "nedda", "yee", "webale", "oli otya",
+  "nnyabo", "ssebo", "nange", "naawe", "wano", "eri",
 ];
 
 // Leetspeak / common substitution map
