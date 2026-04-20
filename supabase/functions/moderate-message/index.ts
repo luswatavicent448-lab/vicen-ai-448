@@ -191,17 +191,33 @@ function lev(a: string, b: string): number {
   return dp[n];
 }
 
+// Detect regional language context (Swahili / Luganda).
+// Returns a multiplier so we can boost detection accuracy when users
+// are clearly conversing in a regional language (coded insults are subtler).
+function detectRegion(spaced: string): { region: "en" | "regional"; multiplier: number } {
+  const tokens = spaced.split(" ").filter(Boolean);
+  if (tokens.length === 0) return { region: "en", multiplier: 1 };
+  let hits = 0;
+  for (const t of tokens) {
+    if (REGIONAL_MARKERS.includes(t)) hits++;
+  }
+  const ratio = hits / tokens.length;
+  if (ratio >= 0.15) return { region: "regional", multiplier: 1.3 };
+  return { region: "en", multiplier: 1 };
+}
+
 // Check if any bad word appears as substring of tight-normalized text,
 // OR if a token is within edit-distance 1 of a bad word (catches "fucc", "shyt"-style).
 function detectAbuse(
   text: string,
   learned: Set<string>,
-): { score: number; hits: string[] } {
+): { score: number; hits: string[]; region: string } {
   const hits: string[] = [];
   let score = 0;
 
   const tight = normalizeTight(text);
   const spaced = normalizeSpaced(text);
+  const { region, multiplier } = detectRegion(spaced);
 
   // 1. Substring match against tight form (defeats all spacing/symbol bypass)
   const allBadSingles = [...SEED_BAD_WORDS, ...learned];
@@ -241,7 +257,10 @@ function detectAbuse(
     score += 1;
   }
 
-  return { score, hits: [...new Set(hits)] };
+  // 5. Regional context multiplier — boosts confidence on Swahili/Luganda insults
+  if (score > 0) score = Math.round(score * multiplier);
+
+  return { score, hits: [...new Set(hits)], region };
 }
 
 serve(async (req) => {
