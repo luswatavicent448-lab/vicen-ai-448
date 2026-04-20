@@ -126,6 +126,15 @@ const LEARN_THRESHOLD = 3;
 const userScores = new Map<string, { score: number; muted: boolean }>();
 const candidateCounts = new Map<string, number>();
 
+// Room-level toxicity tracker: roomId -> [{ userId, ts }]
+// Used to issue a general room warning when multiple users get flagged
+// in a short window (smart intervention).
+const roomToxicity = new Map<string, { userId: string; ts: number }[]>();
+const roomLastGeneralWarn = new Map<string, number>();
+const TOXICITY_WINDOW_MS = 60_000; // 1 minute
+const TOXICITY_THRESHOLD = 3;       // 3 flagged messages in window
+const GENERAL_WARN_COOLDOWN_MS = 120_000; // don't spam room warnings
+
 // --- Normalization helpers ---
 
 // Replace leetspeak chars with letters
