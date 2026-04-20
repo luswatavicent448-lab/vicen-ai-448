@@ -126,6 +126,15 @@ const LEARN_THRESHOLD = 3;
 const userScores = new Map<string, { score: number; muted: boolean }>();
 const candidateCounts = new Map<string, number>();
 
+// Room-level toxicity tracker: roomId -> [{ userId, ts }]
+// Used to issue a general room warning when multiple users get flagged
+// in a short window (smart intervention).
+const roomToxicity = new Map<string, { userId: string; ts: number }[]>();
+const roomLastGeneralWarn = new Map<string, number>();
+const TOXICITY_WINDOW_MS = 60_000; // 1 minute
+const TOXICITY_THRESHOLD = 3;       // 3 flagged messages in window
+const GENERAL_WARN_COOLDOWN_MS = 120_000; // don't spam room warnings
+
 // --- Normalization helpers ---
 
 // Replace leetspeak chars with letters
@@ -370,6 +379,31 @@ serve(async (req) => {
         sender_name: BOT_NAME,
         content: messages[action],
       });
+
+      // --- Smart intervention: room-wide warning when toxicity spikes ---
+      const now = Date.now();
+      const events = (roomToxicity.get(roomId) ?? [])
+        .filter((e) => now - e.ts < TOXICITY_WINDOW_MS);
+      events.push({ userId, ts: now });
+      roomToxicity.set(roomId, events);
+
+      const distinctUsers = new Set(events.map((e) => e.userId)).size;
+      const lastWarn = roomLastGeneralWarn.get(roomId) ?? 0;
+
+      if (
+        events.length >= TOXICITY_THRESHOLD &&
+        distinctUsers >= 2 &&
+        now - lastWarn > GENERAL_WARN_COOLDOWN_MS
+      ) {
+        roomLastGeneralWarn.set(roomId, now);
+        await admin.from("chat_messages").insert({
+          room_id: roomId,
+          user_id: BOT_USER_ID,
+          sender_name: BOT_NAME,
+          content:
+            "⚠️ Please keep the conversation respectful. Continued abuse may lead to restrictions for everyone.",
+        });
+      }
     }
 
     return new Response(
