@@ -381,21 +381,39 @@ serve(async (req) => {
       });
 
       // --- Smart intervention: room-wide warning when toxicity spikes ---
-      const now = Date.now();
-      const events = (roomToxicity.get(roomId) ?? [])
-        .filter((e) => now - e.ts < TOXICITY_WINDOW_MS);
-      events.push({ userId, ts: now });
-      roomToxicity.set(roomId, events);
+      // Query DB (stateless across edge function isolates) for recent bot
+      // warnings in this room within the toxicity window.
+      const windowStart = new Date(Date.now() - TOXICITY_WINDOW_MS).toISOString();
+      const { data: recentBotMsgs } = await admin
+        .from("chat_messages")
+        .select("content, created_at")
+        .eq("room_id", roomId)
+        .eq("user_id", BOT_USER_ID)
+        .gte("created_at", windowStart)
+        .order("created_at", { ascending: false })
+        .limit(20);
 
-      const distinctUsers = new Set(events.map((e) => e.userId)).size;
-      const lastWarn = roomLastGeneralWarn.get(roomId) ?? 0;
+      const recent = recentBotMsgs ?? [];
+      // Count user-directed warnings (warn/final/mute) — those start with ⚠️ @, 🚫 @, or 🔇 @
+      const warningMsgs = recent.filter((m: { content: string }) =>
+        /^(⚠️|🚫|🔇)\s*@/.test(m.content)
+      );
+      // Distinct users mentioned in those warnings
+      const mentionedUsers = new Set<string>();
+      for (const m of warningMsgs) {
+        const match = m.content.match(/@([A-Za-z0-9_\-\.]+)/);
+        if (match) mentionedUsers.add(match[1]);
+      }
+      // Has a general warning been posted recently?
+      const recentGeneralWarn = recent.some((m: { content: string }) =>
+        m.content.startsWith("⚠️ Please keep the conversation respectful")
+      );
 
       if (
-        events.length >= TOXICITY_THRESHOLD &&
-        distinctUsers >= 2 &&
-        now - lastWarn > GENERAL_WARN_COOLDOWN_MS
+        warningMsgs.length >= TOXICITY_THRESHOLD &&
+        mentionedUsers.size >= 2 &&
+        !recentGeneralWarn
       ) {
-        roomLastGeneralWarn.set(roomId, now);
         await admin.from("chat_messages").insert({
           room_id: roomId,
           user_id: BOT_USER_ID,
