@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const BOT_USER_ID = "00000000-0000-0000-0000-000000000bot";
+const BOT_USER_ID = "00000000-0000-0000-0000-0000000000b0";
 const BOT_NAME = "VICEN AI 🤖";
 
 serve(async (req) => {
