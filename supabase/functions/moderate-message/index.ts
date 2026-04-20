@@ -1,5 +1,8 @@
-// Vicen AI moderation: runs server-side with service role.
-// - Detects abusive language (seed list + learned words)
+// Vicen AI advanced moderation: server-side with service role.
+// - Detects abusive language with bypass-resistant normalization
+//   (leetspeak, spacing, repeated chars, symbols, misspellings)
+// - Detects multi-word phrases (e.g. "fuck off", "shut up")
+// - Multi-language: English + Luganda + Swahili
 // - Tracks per-user offense score in-memory per room
 // - Issues warning -> final warning -> mute system messages
 // - Learns new abusive-looking words (>= LEARN_THRESHOLD repeats) into the
@@ -16,62 +19,190 @@ const corsHeaders = {
 const BOT_USER_ID = "00000000-0000-0000-0000-000000000bot";
 const BOT_NAME = "VICEN AI 🤖";
 
-// Seed abusive list (English + Swahili examples). Extend as needed.
+// Seed abusive list — single tokens. Variations are handled by normalization.
+// English profanity + insults
 const SEED_BAD_WORDS = [
-  "idiot", "stupid", "fool", "dumb", "moron", "loser",
-  "nyoko", "pumbavu", "mjinga", "mavi",
+  // English profanity
+  "fuck", "fucker", "fucking", "fuk", "fck", "motherfucker",
+  "shit", "shyt", "bullshit", "crap",
+  "bitch", "biatch", "btch",
+  "asshole", "ashole", "arsehole",
+  "dick", "dickhead", "prick", "cock",
+  "pussy", "cunt", "twat",
+  "bastard", "damn", "douche", "douchebag",
+  "wanker", "tosser",
+  "slut", "whore", "hoe",
+  "retard", "retarded",
+  "nigger", "nigga", "fag", "faggot",
+  // Insults
+  "idiot", "stupid", "fool", "dumb", "moron", "loser", "imbecile",
+  "scum", "trash", "garbage",
+  // Swahili
+  "nyoko", "pumbavu", "mjinga", "mavi", "shenzi", "malaya",
+  // Luganda (common offensive terms)
+  "musiru", "kasiru", "kifere", "kikoligo", "malaaya", "kasilamu",
+  "embwa", "kibwankulata", "muyaga", "kinusi",
 ];
 
-// Learning threshold: how many times a candidate word must appear in
-// proximity to abusive context before being learned.
+// Multi-word phrases — checked against the spaced-normalized form
+const SEED_BAD_PHRASES = [
+  "fuck off", "fuck you", "fuck u", "f off",
+  "shut up", "shut the fuck up", "stfu",
+  "go to hell", "kiss my ass",
+  "son of a bitch", "piece of shit",
+  "eat shit", "screw you",
+  // Luganda phrases
+  "genda eri", "ozze nyabo", "musiru gwe",
+];
+
+// Leetspeak / common substitution map
+const LEET_MAP: Record<string, string> = {
+  "0": "o", "1": "i", "!": "i", "|": "i",
+  "3": "e", "4": "a", "@": "a",
+  "5": "s", "$": "s", "7": "t",
+  "8": "b", "9": "g",
+};
+
+// Learning threshold
 const LEARN_THRESHOLD = 3;
 
-// In-memory state (per warm instance). Acceptable for moderation: worst case
-// a warning resets when the function cold-starts.
-const userScores = new Map<string, { score: number; muted: boolean }>(); // key: roomId:userId
-const candidateCounts = new Map<string, number>(); // key: word
+// In-memory state (per warm instance)
+const userScores = new Map<string, { score: number; muted: boolean }>();
+const candidateCounts = new Map<string, number>();
 
-function normalize(text: string): string {
-  return text.toLowerCase().replace(/[^a-z\s]/g, " ");
+// --- Normalization helpers ---
+
+// Replace leetspeak chars with letters
+function deLeet(text: string): string {
+  let out = "";
+  for (const ch of text) {
+    out += LEET_MAP[ch] ?? ch;
+  }
+  return out;
 }
 
+// Collapse repeated letters: "fuuuuck" -> "fuck", "shiiit" -> "shit"
+// Only collapse 3+ to 1 to keep things like "book" intact (2 reps).
+function collapseRepeats(text: string): string {
+  return text.replace(/([a-z])\1{2,}/g, "$1");
+}
+
+// Normalize for SINGLE-WORD detection: strip ALL non-letters (defeats spacing/symbol bypass)
+// e.g. "f.u.c.k", "f u c k", "f*u*c*k" -> "fuck"
+function normalizeTight(text: string): string {
+  let t = text.toLowerCase();
+  t = deLeet(t);
+  t = t.replace(/[^a-z]/g, "");
+  t = collapseRepeats(t);
+  return t;
+}
+
+// Normalize for PHRASE detection: keep single spaces between words
+function normalizeSpaced(text: string): string {
+  let t = text.toLowerCase();
+  t = deLeet(t);
+  t = t.replace(/[^a-z\s]/g, " ");
+  t = t.replace(/\s+/g, " ").trim();
+  // collapse repeats per-word
+  t = t.split(" ").map(collapseRepeats).join(" ");
+  return t;
+}
+
+// Tokens for learning system (length > 2)
 function tokenize(text: string): string[] {
-  return normalize(text)
-    .split(/\s+/)
-    .map((w) => w.trim())
+  return normalizeSpaced(text)
+    .split(" ")
     .filter((w) => w.length > 2);
 }
 
-function detectAbuse(text: string, learned: Set<string>): {
-  score: number;
-  hits: string[];
-} {
-  const tokens = tokenize(text);
-  const hits: string[] = [];
-  let score = 0;
-  for (const t of tokens) {
-    if (SEED_BAD_WORDS.includes(t) || learned.has(t)) {
-      score += 3;
-      hits.push(t);
+// Levenshtein distance for fuzzy match (small, capped)
+function lev(a: string, b: string): number {
+  if (Math.abs(a.length - b.length) > 2) return 99;
+  const m = a.length, n = b.length;
+  const dp: number[] = new Array(n + 1);
+  for (let j = 0; j <= n; j++) dp[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1]
+        ? prev
+        : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = tmp;
     }
   }
-  // Shouting heuristic
+  return dp[n];
+}
+
+// Check if any bad word appears as substring of tight-normalized text,
+// OR if a token is within edit-distance 1 of a bad word (catches "fucc", "shyt"-style).
+function detectAbuse(
+  text: string,
+  learned: Set<string>,
+): { score: number; hits: string[] } {
+  const hits: string[] = [];
+  let score = 0;
+
+  const tight = normalizeTight(text);
+  const spaced = normalizeSpaced(text);
+
+  // 1. Substring match against tight form (defeats all spacing/symbol bypass)
+  const allBadSingles = [...SEED_BAD_WORDS, ...learned];
+  for (const w of allBadSingles) {
+    if (w.length < 3) continue;
+    if (tight.includes(w)) {
+      score += 3;
+      hits.push(w);
+    }
+  }
+
+  // 2. Phrase match against spaced form
+  for (const p of SEED_BAD_PHRASES) {
+    if (spaced.includes(p)) {
+      score += 4; // phrases are stronger signal
+      hits.push(p);
+    }
+  }
+
+  // 3. Fuzzy per-token match (catches misspellings not caught by substring)
+  const tokens = tokenize(text);
+  for (const t of tokens) {
+    if (t.length < 4) continue;
+    for (const w of allBadSingles) {
+      if (w.length < 4) continue;
+      if (hits.includes(w)) continue;
+      if (lev(t, w) === 1) {
+        score += 2;
+        hits.push(w);
+        break;
+      }
+    }
+  }
+
+  // 4. Shouting heuristic
   if (text.length > 5 && text === text.toUpperCase() && /[A-Z]/.test(text)) {
     score += 1;
   }
-  return { score, hits };
+
+  return { score, hits: [...new Set(hits)] };
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     const { roomId, userId, senderName, content } = await req.json();
     if (!roomId || !userId || !content) {
-      return new Response(JSON.stringify({ error: "roomId, userId, content required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "roomId, userId, content required" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -82,18 +213,20 @@ serve(async (req) => {
     const { data: learnedRows } = await admin
       .from("learned_words")
       .select("word");
-    const learned = new Set<string>((learnedRows ?? []).map((r: { word: string }) => r.word));
+    const learned = new Set<string>(
+      (learnedRows ?? []).map((r: { word: string }) => r.word),
+    );
 
     const { score: msgScore, hits } = detectAbuse(content, learned);
 
-    // Bump per-user score in this room
+    // Per-user score in this room
     const key = `${roomId}:${userId}`;
     const state = userScores.get(key) ?? { score: 0, muted: false };
 
     if (state.muted) {
       return new Response(
         JSON.stringify({ allowed: false, muted: true, reason: "muted" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -111,25 +244,30 @@ serve(async (req) => {
     }
     userScores.set(key, state);
 
-    // Update counts for hit words (already-known abusive terms)
+    // Bump counts for already-known abusive terms (analytics in private table)
     for (const w of hits) {
       if (learned.has(w)) {
-        await admin.rpc("increment_learned_word", { _word: w }).catch(() => {
-          // Fallback: best-effort upsert if RPC doesn't exist
-          admin.from("learned_words").upsert(
-            { word: w, count: 1 },
-            { onConflict: "word", ignoreDuplicates: false }
-          );
-        });
+        await admin
+          .rpc("increment_learned_word", { _word: w })
+          .catch(() => {
+            admin.from("learned_words").upsert(
+              { word: w, count: 1 },
+              { onConflict: "word", ignoreDuplicates: false },
+            );
+          });
       }
     }
 
-    // Learn new candidate words: only when message already had abusive context
-    // (msgScore > 0 from seed/learned hits) — prevents learning innocent words.
+    // Learn new candidate words: only when message had abusive context
     if (msgScore >= 3) {
       const tokens = tokenize(content);
       for (const t of tokens) {
-        if (SEED_BAD_WORDS.includes(t) || learned.has(t)) continue;
+        // Skip if already known (substring or fuzzy)
+        const alreadyKnown = SEED_BAD_WORDS.some((w) =>
+          t.includes(w) || lev(t, w) <= 1
+        ) || learned.has(t);
+        if (alreadyKnown) continue;
+
         const c = (candidateCounts.get(t) ?? 0) + 1;
         candidateCounts.set(t, c);
         if (c >= LEARN_THRESHOLD) {
@@ -144,9 +282,12 @@ serve(async (req) => {
     // Post system message from bot when action != allow
     if (action !== "allow") {
       const messages: Record<string, string> = {
-        warn: `⚠️ @${senderName || "User"} — please avoid abusive language. This is a warning.`,
-        final: `⚠️ @${senderName || "User"} — final warning. Continued abuse will result in a mute.`,
-        mute: `🚫 @${senderName || "User"} has been muted for repeated abusive language.`,
+        warn:
+          `⚠️ @${senderName || "User"} — please avoid abusive language. This is a warning.`,
+        final:
+          `🚫 @${senderName || "User"} — final warning. Continued abuse will result in a mute.`,
+        mute:
+          `🔇 @${senderName || "User"} has been muted for repeated abusive language.`,
       };
       await admin.from("chat_messages").insert({
         room_id: roomId,
@@ -163,13 +304,18 @@ serve(async (req) => {
         muted: state.muted,
         score: state.score,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
     console.error("moderate-message error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        error: e instanceof Error ? e.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });
