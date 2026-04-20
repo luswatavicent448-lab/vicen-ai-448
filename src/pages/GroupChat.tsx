@@ -264,6 +264,26 @@ export default function GroupChat() {
     if (!trimmed || !roomId || !userId) return;
     setText("");
     setTyping(false);
+
+    // 🛡️ Vicen AI moderation (group chats only — public + private)
+    const { data: modData, error: modError } = await supabase.functions.invoke(
+      "moderate-message",
+      {
+        body: {
+          roomId,
+          userId,
+          senderName: displayName,
+          content: trimmed,
+        },
+      }
+    );
+    if (modError) {
+      console.error("Moderation error:", modError);
+    } else if (modData && modData.allowed === false) {
+      if (modData.muted) toast.error("You are muted in this room");
+      return; // Block insert; bot has already posted the warning
+    }
+
     const { error } = await supabase.from("chat_messages").insert({
       room_id: roomId,
       user_id: userId,

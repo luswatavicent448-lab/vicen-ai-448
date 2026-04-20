@@ -88,6 +88,30 @@ export type Database = {
         }
         Relationships: []
       }
+      learned_words: {
+        Row: {
+          count: number
+          created_at: string
+          id: string
+          updated_at: string
+          word: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          word: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          word?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           content: string

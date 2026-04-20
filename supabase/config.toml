@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.group-chat-ai]
 verify_jwt = false
+
+[functions.moderate-message]
+verify_jwt = false
