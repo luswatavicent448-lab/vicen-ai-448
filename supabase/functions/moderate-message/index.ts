@@ -379,6 +379,31 @@ serve(async (req) => {
         sender_name: BOT_NAME,
         content: messages[action],
       });
+
+      // --- Smart intervention: room-wide warning when toxicity spikes ---
+      const now = Date.now();
+      const events = (roomToxicity.get(roomId) ?? [])
+        .filter((e) => now - e.ts < TOXICITY_WINDOW_MS);
+      events.push({ userId, ts: now });
+      roomToxicity.set(roomId, events);
+
+      const distinctUsers = new Set(events.map((e) => e.userId)).size;
+      const lastWarn = roomLastGeneralWarn.get(roomId) ?? 0;
+
+      if (
+        events.length >= TOXICITY_THRESHOLD &&
+        distinctUsers >= 2 &&
+        now - lastWarn > GENERAL_WARN_COOLDOWN_MS
+      ) {
+        roomLastGeneralWarn.set(roomId, now);
+        await admin.from("chat_messages").insert({
+          room_id: roomId,
+          user_id: BOT_USER_ID,
+          sender_name: BOT_NAME,
+          content:
+            "⚠️ Please keep the conversation respectful. Continued abuse may lead to restrictions for everyone.",
+        });
+      }
     }
 
     return new Response(
