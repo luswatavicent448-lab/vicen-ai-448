@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, User, Shield, Cloud, Bell, Heart, LogOut } from "lucide-react";
 import { SettingsSubPage } from "@/components/SettingsSubPage";
 import { AccountSection } from "@/components/AccountSection";
+import { ProfileEditor } from "@/components/ProfileEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -84,7 +85,7 @@ export default function AccountPage() {
       </div>
 
       <Collapse icon={User} title="Profile" defaultOpen>
-        <AccountSection />
+        {email ? <ProfileEditor /> : <AccountSection />}
       </Collapse>
 
       <Collapse icon={Shield} title="Privacy & Security">
