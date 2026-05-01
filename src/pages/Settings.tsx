@@ -62,53 +62,6 @@ const GROUPS: { label: string; items: Category[] }[] = [
   },
 ];
 
-function SelectField<K extends keyof ChatSettings>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (v: ChatSettings[K]) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-sm text-foreground">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as ChatSettings[K])}
-        className="bg-secondary text-secondary-foreground border-none rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-sm text-foreground">{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
-    </div>
-  );
-}
-
-function Section({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-card rounded-xl border border-border p-4 space-y-1">
-      <h3 className="flex items-center gap-2 text-sm font-semibold text-primary mb-2">
-        <Icon className="w-4 h-4" /> {title}
-      </h3>
-      {children}
-    </div>
-  );
-}
-
 export default function SettingsPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState<string | null>(null);
