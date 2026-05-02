@@ -48,12 +48,20 @@ export default function AccountPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [cloudBackup, setCloudBackup] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setEmail(session?.user?.email ?? null);
-      setCreatedAt(session?.user?.created_at ?? null);
-    });
+    const sync = (user: any) => {
+      setEmail(user?.email ?? null);
+      setCreatedAt(user?.created_at ?? null);
+      const meta = user?.user_metadata ?? {};
+      setAvatarUrl(meta.avatar_url ?? null);
+      setDisplayName(meta.display_name || meta.full_name || meta.name || null);
+    };
+    supabase.auth.getUser().then(({ data }) => sync(data.user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => sync(s?.user));
+    return () => subscription.unsubscribe();
   }, []);
 
   const accountAge = createdAt
@@ -71,14 +79,22 @@ export default function AccountPage() {
     <SettingsSubPage title="Account">
       {/* Profile header card */}
       <div className="bg-card rounded-2xl p-5 flex items-center gap-4 shadow-[0_4px_12px_rgba(0,0,0,0.3)] ring-1 ring-primary/20">
-        <div className="w-16 h-16 rounded-full bg-primary/80 flex items-center justify-center ring-2 ring-primary/40">
-          <span className="text-2xl font-semibold text-primary-foreground">
-            {(email?.[0] ?? "G").toUpperCase()}
-          </span>
-        </div>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt="Profile"
+            className="w-16 h-16 rounded-full object-cover ring-2 ring-primary/40"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-primary/80 flex items-center justify-center ring-2 ring-primary/40">
+            <span className="text-2xl font-semibold text-primary-foreground">
+              {(displayName?.[0] ?? email?.[0] ?? "G").toUpperCase()}
+            </span>
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <p className="font-semibold uppercase tracking-wide text-foreground truncate">
-            {email ? email.split("@")[0] : "Guest"}
+            {displayName || (email ? email.split("@")[0] : "Guest")}
           </p>
           <p className="text-sm text-muted-foreground truncate">{email ?? "Not signed in"}</p>
         </div>
