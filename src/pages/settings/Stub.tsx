@@ -13,9 +13,6 @@ export function StubPage({ title, message }: { title: string; message?: string }
   );
 }
 
-export function VoicePage() {
-  return <StubPage title="Voice" message="Voice studio, dictation, and assistant settings are on the way." />;
-}
 export function AIPage() {
   return <StubPage title="AI Controls" message="Reasoning, memory, safety, and presets are on the way." />;
 }
