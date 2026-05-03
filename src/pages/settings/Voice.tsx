@@ -22,20 +22,54 @@ import { Slider } from "@/components/ui/slider";
 import { useVoiceSettings, VOICE_LIBRARY, VoiceId } from "@/hooks/use-voice-settings";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SmokeAvatar } from "@/components/voice/SmokeAvatar";
 
-function speakSample(text: string, rate = 1) {
+type VoiceProfile = (typeof VOICE_LIBRARY)[number];
+
+function pickSystemVoice(hints: string[]): SpeechSynthesisVoice | null {
+  if (!("speechSynthesis" in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  for (const hint of hints) {
+    const match = voices.find((v) =>
+      v.name.toLowerCase().includes(hint.toLowerCase())
+    );
+    if (match) return match;
+  }
+  return voices.find((v) => v.lang.startsWith("en")) || voices[0] || null;
+}
+
+function speakAs(profile: VoiceProfile, userRate = 1, onEnd?: () => void) {
   try {
     if (!("speechSynthesis" in window)) {
       toast.message("Voice preview not supported on this device");
       return;
     }
+    // 50ms fade-out: cancel previous immediately
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = rate;
+    const u = new SpeechSynthesisUtterance(profile.sample);
+    const sysVoice = pickSystemVoice(profile.voiceHints);
+    if (sysVoice) u.voice = sysVoice;
+    u.pitch = profile.pitch;
+    u.rate = profile.rate * userRate;
+    if (onEnd) {
+      u.onend = onEnd;
+      u.onerror = onEnd;
+    }
     window.speechSynthesis.speak(u);
   } catch {
     toast.error("Could not play preview");
   }
+}
+
+function speakPlain(text: string, rate = 1) {
+  try {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = rate;
+    window.speechSynthesis.speak(u);
+  } catch { /* noop */ }
 }
 
 export default function VoicePage() {
@@ -44,13 +78,37 @@ export default function VoicePage() {
   const [previewing, setPreviewing] = useState<VoiceId | null>(null);
   const previewTimer = useRef<number | null>(null);
 
+  // Warm up voices list (Chrome loads asynchronously)
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.getVoices();
+    const handler = () => window.speechSynthesis.getVoices();
+    window.speechSynthesis.addEventListener?.("voiceschanged", handler);
+    return () => window.speechSynthesis.removeEventListener?.("voiceschanged", handler);
+  }, []);
+
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
 
-  const handlePreview = (id: VoiceId, sample: string) => {
-    setPreviewing(id);
-    speakSample(sample, voice.speed);
+  const handlePreview = (profile: VoiceProfile) => {
+    if (previewing === profile.id) {
+      window.speechSynthesis?.cancel();
+      setPreviewing(null);
+      return;
+    }
+    setPreviewing(profile.id);
+    speakAs(profile, voice.speed, () => setPreviewing((cur) => (cur === profile.id ? null : cur)));
     if (previewTimer.current) window.clearTimeout(previewTimer.current);
-    previewTimer.current = window.setTimeout(() => setPreviewing(null), 4000);
+    previewTimer.current = window.setTimeout(() => setPreviewing(null), 6000);
+  };
+
+  const handleSelect = (profile: VoiceProfile) => {
+    if (voice.selectedVoice === profile.id) return;
+    update("selectedVoice", profile.id);
+    // light haptic on supported devices
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try { navigator.vibrate?.(10); } catch { /* noop */ }
+    }
+    toast.success(`Voice set to ${profile.name}`);
   };
 
   const handleDownload = (id: VoiceId) => {
@@ -66,93 +124,127 @@ export default function VoicePage() {
     toast.message(`Speed set to ${v}x`);
   };
 
+  const selectedProfile =
+    VOICE_LIBRARY.find((v) => v.id === voice.selectedVoice) ?? VOICE_LIBRARY[0];
+  const otherVoices = VOICE_LIBRARY.filter((v) => v.id !== selectedProfile.id);
+
   return (
     <SettingsSubPage title="Voice">
       {/* 1. VOICE STUDIO */}
       <SettingsGroup label="🎙️ Voice Studio">
-        <div className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Currently selected</p>
-              <p className="text-foreground font-semibold flex items-center gap-2">
-                {VOICE_LIBRARY.find((v) => v.id === voice.selectedVoice)?.name}
-                <Check className="w-4 h-4 text-primary" />
-              </p>
+        <div className="p-4 space-y-4">
+          {/* HERO — Currently selected */}
+          <div
+            className="relative rounded-2xl p-5 overflow-hidden transition-all duration-200"
+            style={{
+              background: "#1C1C24",
+              border: `2px solid ${selectedProfile.accent}`,
+              boxShadow: `0 0 0 1px rgba(255,255,255,0.04), 0 18px 40px -20px ${selectedProfile.accent}66, inset 0 0 60px -20px ${selectedProfile.accent}33`,
+            }}
+          >
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-3">
+              Currently selected
+            </p>
+            <div className="flex items-center gap-4">
+              <SmokeAvatar
+                colorA={selectedProfile.colorA}
+                colorB={selectedProfile.colorB}
+                size={84}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-lg font-semibold text-foreground truncate">
+                    {selectedProfile.name}
+                  </h3>
+                  <Check
+                    className="w-4 h-4 shrink-0"
+                    style={{ color: selectedProfile.accent }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mb-3 truncate">
+                  {selectedProfile.tagline}
+                </p>
+                <button
+                  onClick={() => handlePreview(selectedProfile)}
+                  className="rounded-xl px-3.5 py-2 text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95"
+                  style={{
+                    background: "rgba(255,255,255,0.08)",
+                    backdropFilter: "blur(10px)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "hsl(var(--foreground))",
+                  }}
+                >
+                  {previewing === selectedProfile.id ? (
+                    <Pause className="w-3.5 h-3.5" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5" />
+                  )}
+                  {previewing === selectedProfile.id ? "Stop" : "Preview voice"}
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => {
-                const v = VOICE_LIBRARY.find((x) => x.id === voice.selectedVoice);
-                if (v) handlePreview(v.id, v.sample);
-              }}
-              className="bg-secondary hover:bg-secondary/70 text-foreground rounded-xl px-3 py-2 text-xs font-medium flex items-center gap-1.5 transition-colors"
-            >
-              <Play className="w-3.5 h-3.5" /> Preview
-            </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
-            {VOICE_LIBRARY.map((v) => {
-              const selected = voice.selectedVoice === v.id;
+          {/* GRID — Other voices */}
+          <div className="grid grid-cols-2 gap-4">
+            {otherVoices.map((v) => {
               const dl = downloaded[v.id] ?? "idle";
+              const isPreviewing = previewing === v.id;
               return (
                 <div
                   key={v.id}
-                  className={cn(
-                    "relative rounded-2xl p-3 border transition-all overflow-hidden",
-                    selected
-                      ? "border-primary bg-primary/5"
-                      : "border-border/40 bg-secondary/30 hover:bg-secondary/50"
-                  )}
+                  className="relative rounded-2xl p-5 overflow-hidden transition-all duration-200 flex flex-col items-center text-center"
+                  style={{
+                    background: "#1C1C24",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
                 >
-                  <div
-                    className={cn(
-                      "w-9 h-9 rounded-full bg-gradient-to-br mb-2",
-                      v.gradient
-                    )}
-                  />
-                  <p className="text-sm font-semibold text-foreground leading-tight">{v.name}</p>
-                  <p className="text-[11px] text-muted-foreground mb-2.5">{v.tagline}</p>
-                  <div className="flex items-center gap-1.5">
+                  <SmokeAvatar colorA={v.colorA} colorB={v.colorB} size={84} />
+                  <p className="mt-3 text-[15px] font-semibold text-foreground leading-tight">
+                    {v.name}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5 mb-3 line-clamp-1">
+                    {v.tagline}
+                  </p>
+                  <div className="w-full flex items-center gap-2">
                     <button
-                      onClick={() => handlePreview(v.id, v.sample)}
-                      className="flex-1 bg-background/60 hover:bg-background text-foreground rounded-lg py-1.5 text-[11px] font-medium flex items-center justify-center gap-1 transition-colors"
+                      onClick={() => handlePreview(v)}
                       aria-label={`Preview ${v.name}`}
+                      className="flex-1 rounded-xl py-2 text-[11px] font-medium flex items-center justify-center gap-1 transition-all active:scale-95"
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                        backdropFilter: "blur(10px)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        color: "hsl(var(--foreground))",
+                      }}
                     >
-                      {previewing === v.id ? (
-                        <Pause className="w-3 h-3" />
-                      ) : (
-                        <Play className="w-3 h-3" />
-                      )}
-                      Preview
+                      {isPreviewing ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                      {isPreviewing ? "Stop" : "Preview"}
                     </button>
                     <button
-                      onClick={() => {
-                        update("selectedVoice", v.id);
-                        toast.success(`${v.name} set as default`);
+                      onClick={() => handleSelect(v)}
+                      className="flex-1 rounded-xl py-2 text-[11px] font-semibold transition-all active:scale-95"
+                      style={{
+                        background: v.accent,
+                        color: "#0A0A0A",
                       }}
-                      className={cn(
-                        "flex-1 rounded-lg py-1.5 text-[11px] font-medium transition-colors",
-                        selected
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background/60 hover:bg-background text-foreground"
-                      )}
                     >
-                      {selected ? "Default" : "Set"}
+                      Set
                     </button>
                   </div>
                   <button
                     onClick={() => dl === "idle" && handleDownload(v.id)}
-                    className="mt-1.5 w-full text-[11px] text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 py-1"
+                    className="mt-2 text-[10.5px] text-muted-foreground hover:text-foreground flex items-center justify-center gap-1"
                   >
                     {dl === "done" ? (
                       <>
-                        <Check className="w-3 h-3 text-emerald-500" /> Downloaded
+                        <Check className="w-3 h-3 text-emerald-500" /> Offline ready
                       </>
                     ) : dl === "downloading" ? (
                       "Downloading…"
                     ) : (
                       <>
-                        <Download className="w-3 h-3" /> Offline
+                        <Download className="w-3 h-3" /> Download for offline
                       </>
                     )}
                   </button>
@@ -241,7 +333,7 @@ export default function VoicePage() {
             ))}
           </div>
           <button
-            onClick={() => speakSample("This is how I sound at this speed.", voice.speed)}
+            onClick={() => speakPlain("This is how I sound at this speed.", voice.speed)}
             className="w-full bg-secondary hover:bg-secondary/70 rounded-xl py-2 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
           >
             <Play className="w-3.5 h-3.5" /> Preview
