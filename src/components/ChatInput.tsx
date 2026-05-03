@@ -1,6 +1,9 @@
-import { useState, useRef, KeyboardEvent } from "react";
-import { Send, Globe } from "lucide-react";
+import { useState, useRef, KeyboardEvent, useEffect } from "react";
+import { Send, Globe, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDictation, toBCP47 } from "@/hooks/use-dictation";
+import { useVoiceSettings } from "@/hooks/use-voice-settings";
+import { toast } from "sonner";
 
 export function ChatInput({
   onSend,
@@ -15,12 +18,52 @@ export function ChatInput({
 }) {
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { voice } = useVoiceSettings();
+  const baseTextRef = useRef("");
+
+  const resize = () => {
+    const el = inputRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 150) + "px";
+    }
+  };
+
+  const dictation = useDictation({
+    lang: toBCP47(voice.dictationLanguage),
+    silenceMs: voice.silenceStop ? 1500 : 8000,
+    onInterim: (interim) => {
+      const next = (baseTextRef.current + (baseTextRef.current ? " " : "") + interim).trimStart();
+      setText(next);
+      requestAnimationFrame(resize);
+    },
+    onFinal: (finalText) => {
+      const next = (baseTextRef.current + (baseTextRef.current ? " " : "") + finalText).trimStart();
+      baseTextRef.current = next;
+      setText(next);
+      requestAnimationFrame(resize);
+    },
+    onError: (err) => {
+      if (err === "not-allowed" || err === "service-not-allowed") {
+        toast.error("Microphone access denied. Enable it in your browser settings.");
+      } else {
+        toast.error("Dictation error: " + err);
+      }
+    },
+  });
+
+  useEffect(() => {
+    return () => { try { dictation.stop(); } catch { /* noop */ } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSend = () => {
     const trimmed = text.trim();
     if (!trimmed || disabled) return;
+    if (dictation.listening) dictation.stop();
     onSend(trimmed);
     setText("");
+    baseTextRef.current = "";
     if (inputRef.current) inputRef.current.style.height = "auto";
   };
 
@@ -31,12 +74,19 @@ export function ChatInput({
     }
   };
 
-  const handleInput = () => {
-    const el = inputRef.current;
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 150) + "px";
+  const handleInput = () => resize();
+
+  const toggleMic = () => {
+    if (!dictation.supported) {
+      toast.error("Dictation isn't supported in this browser. Try Chrome or Edge.");
+      return;
     }
+    if (dictation.listening) {
+      dictation.stop();
+      return;
+    }
+    baseTextRef.current = text.trim();
+    dictation.start();
   };
 
   return (
@@ -62,10 +112,34 @@ export function ChatInput({
           value={text}
           onChange={(e) => { setText(e.target.value); handleInput(); }}
           onKeyDown={handleKeyDown}
-          placeholder={browsing ? "Search the web..." : "Ask anything..."}
+          placeholder={dictation.listening ? "Listening…" : browsing ? "Search the web..." : "Ask anything..."}
           rows={1}
           className="flex-1 resize-none bg-secondary text-foreground placeholder:text-muted-foreground rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 scrollbar-thin"
         />
+        <button
+          type="button"
+          onClick={toggleMic}
+          aria-pressed={dictation.listening}
+          title={dictation.listening ? "Stop dictation" : "Start dictation"}
+          className={cn(
+            "relative shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+            dictation.listening
+              ? "bg-destructive text-destructive-foreground shadow-md"
+              : "bg-secondary text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {dictation.listening && (
+            <>
+              <span className="absolute inset-0 rounded-xl bg-destructive/40 animate-ping" />
+              <span className="absolute inset-0 rounded-xl ring-2 ring-destructive/60" />
+            </>
+          )}
+          {dictation.listening ? (
+            <MicOff className="w-4 h-4 relative" />
+          ) : (
+            <Mic className="w-4 h-4 relative" />
+          )}
+        </button>
         <button
           onClick={handleSend}
           disabled={disabled || !text.trim()}
