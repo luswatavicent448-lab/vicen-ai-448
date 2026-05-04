@@ -388,7 +388,20 @@ export default function ChatPage() {
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
               {active.messages.map((m, i) => (
-                <ChatMessage key={i} message={m} />
+                <ChatMessage
+                  key={i}
+                  message={m}
+                  onRetry={
+                    m.role === "assistant"
+                      ? () => regenerateAt(i, m.lengthMode === "auto" || !m.lengthMode ? "medium" : m.lengthMode)
+                      : undefined
+                  }
+                  onSetLength={
+                    m.role === "assistant"
+                      ? (mode) => regenerateAt(i, mode)
+                      : undefined
+                  }
+                />
               ))}
               {isStreaming && active.messages[active.messages.length - 1]?.role === "user" && (
                 <TypingIndicator />
