@@ -39,6 +39,9 @@ export function isDictationSupported(): boolean {
 type Options = {
   lang?: string; // BCP-47, e.g. "en-US", "fr-FR", "sw-KE". Empty/auto -> browser default.
   silenceMs?: number; // Auto-stop after this much trailing silence
+  minSpeechMs?: number; // Minimum speaking duration before we accept a final
+  sendDelayMs?: number; // Extra "thinking buffer" before committing the final
+  requireCompleteSentence?: boolean; // Avoid stopping on dangling connectors
   onFinal?: (text: string) => void;
   onInterim?: (text: string) => void;
   onError?: (err: string) => void;
@@ -46,7 +49,10 @@ type Options = {
 
 export function useDictation({
   lang,
-  silenceMs = 1500,
+  silenceMs = 1700,
+  minSpeechMs = 900,
+  sendDelayMs = 500,
+  requireCompleteSentence = true,
   onFinal,
   onInterim,
   onError,
@@ -56,6 +62,8 @@ export function useDictation({
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const silenceTimer = useRef<number | null>(null);
   const finalBufRef = useRef("");
+  const startedAtRef = useRef<number>(0);
+  const manualStopRef = useRef<boolean>(false);
 
   const clearSilenceTimer = () => {
     if (silenceTimer.current) {
@@ -64,16 +72,48 @@ export function useDictation({
     }
   };
 
+  const looksIncomplete = (text: string): boolean => {
+    const t = text.trim().toLowerCase();
+    if (!t) return true;
+    // Ends with a connector / filler word → likely still speaking
+    const danglers = [
+      "and","or","but","so","because","cause","that","which","with",
+      "to","of","for","from","in","on","at","is","are","was","were",
+      "the","a","an","my","your","like","then","when","while","if",
+    ];
+    const last = t.replace(/[.,!?;:]+$/, "").split(/\s+/).pop() || "";
+    if (danglers.includes(last)) return true;
+    // Very short single-word fragments
+    const words = t.split(/\s+/).filter(Boolean);
+    if (words.length < 2) return true;
+    return false;
+  };
+
   const armSilenceTimer = useCallback(() => {
     clearSilenceTimer();
     silenceTimer.current = window.setTimeout(() => {
-      try {
-        recRef.current?.stop();
-      } catch { /* noop */ }
+      // Only auto-stop if we have enough speech AND the sentence looks complete
+      const speakingFor = Date.now() - startedAtRef.current;
+      const buffered = (finalBufRef.current + " " + (recRef.current ? "" : "")).trim();
+      if (speakingFor < minSpeechMs) {
+        // Not enough speech yet — wait another beat
+        armSilenceTimer();
+        return;
+      }
+      if (requireCompleteSentence && looksIncomplete(buffered)) {
+        // Likely a natural pause — keep listening a bit longer
+        armSilenceTimer();
+        return;
+      }
+      // Thinking buffer: small extra delay before actually stopping
+      window.setTimeout(() => {
+        try { recRef.current?.stop(); } catch { /* noop */ }
+      }, sendDelayMs);
     }, silenceMs);
-  }, [silenceMs]);
+  }, [silenceMs, minSpeechMs, sendDelayMs, requireCompleteSentence]);
 
   const stop = useCallback(() => {
+    manualStopRef.current = true;
     clearSilenceTimer();
     try { recRef.current?.stop(); } catch { /* noop */ }
   }, []);
@@ -95,9 +135,12 @@ export function useDictation({
 
     finalBufRef.current = "";
     setInterim("");
+    manualStopRef.current = false;
+    startedAtRef.current = Date.now();
 
     rec.onstart = () => {
       setListening(true);
+      startedAtRef.current = Date.now();
       armSilenceTimer();
     };
     rec.onresult = (e: SREvent) => {
@@ -113,6 +156,20 @@ export function useDictation({
       }
       setInterim(interimText);
       if (interimText) onInterim?.(interimText);
+      // Voice command: "stop listening"
+      const combined = (finalBufRef.current + " " + interimText).toLowerCase();
+      if (/\b(stop listening|stop dictation)\b/.test(combined)) {
+        // Strip the command from the final buffer
+        finalBufRef.current = finalBufRef.current
+          .replace(/\bstop listening\b/gi, "")
+          .replace(/\bstop dictation\b/gi, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        manualStopRef.current = true;
+        clearSilenceTimer();
+        try { recRef.current?.stop(); } catch { /* noop */ }
+        return;
+      }
       armSilenceTimer();
     };
     rec.onerror = (e) => {
@@ -124,9 +181,14 @@ export function useDictation({
       setListening(false);
       setInterim("");
       const final = finalBufRef.current.trim();
-      if (final) onFinal?.(final);
+      // Drop fragments that are too short unless user manually stopped
+      const words = final.split(/\s+/).filter(Boolean);
+      if (final && (manualStopRef.current || words.length >= 2)) {
+        onFinal?.(final);
+      }
       finalBufRef.current = "";
       recRef.current = null;
+      manualStopRef.current = false;
     };
 
     recRef.current = rec;

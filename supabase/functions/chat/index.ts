@@ -19,7 +19,11 @@ function getTodayDate(): string {
   return `Today is ${fullDate}. It is the ${dayOfYear}th day of the year, with ${remaining} days remaining.`;
 }
 
-function buildSystemPrompt(settings: Record<string, unknown> | undefined, browsing: boolean): string {
+function buildSystemPrompt(
+  settings: Record<string, unknown> | undefined,
+  browsing: boolean,
+  lengthOverride?: "short" | "medium" | "detailed" | "auto",
+): string {
   const dateInfo = getTodayDate();
   const s = settings || {};
 
@@ -40,11 +44,18 @@ function buildSystemPrompt(settings: Record<string, unknown> | undefined, browsi
   const toneRule = toneMap[(s.tone as string)] || toneMap.friendly;
 
   const lengthMap: Record<string, string> = {
-    short: "Your response MUST be 1–3 sentences maximum. No extra explanation. Even for greetings, keep it to 1–3 sentences.",
-    medium: "Your response MUST be exactly 1 paragraph. Do not exceed one paragraph. Even for greetings, keep it to 1 paragraph.",
-    detailed: "You may give a detailed explanation, but avoid unnecessary filler. Stay focused and thorough.",
+    short: "Keep the reply to 1–3 short sentences. No headings, no bullets unless absolutely needed. Get straight to the point.",
+    medium: "Reply in 1 focused paragraph (or up to 2 short ones). Clear, natural, no filler.",
+    detailed: "Give a thorough, well-structured reply. Use short paragraphs and bullet points where they genuinely help. Keep it readable, no padding.",
+    auto: "Adapt length to the message: 1–2 sentences for greetings/small talk, one focused paragraph for normal questions, and a structured detailed reply only for complex or academic topics.",
   };
-  const lengthRule = lengthMap[(s.responseLength as string)] || lengthMap.medium;
+  const lengthKey =
+    lengthOverride && lengthOverride !== "auto"
+      ? lengthOverride
+      : lengthOverride === "auto"
+        ? "auto"
+        : ((s.responseLength as string) || "auto");
+  const lengthRule = lengthMap[lengthKey] || lengthMap.auto;
 
   const subjectMap: Record<string, string> = {
     math: "When explaining math, show step-by-step working clearly. Use numbered steps for calculations.",
@@ -84,21 +95,21 @@ function buildSystemPrompt(settings: Record<string, unknown> | undefined, browsi
     name,
     langRule,
     toneRule,
-    `RESPONSE LENGTH RULE (MANDATORY — override all other behavior): ${lengthRule}`,
+    `RESPONSE LENGTH RULE (MANDATORY): ${lengthRule}`,
     `SUBJECT STYLE: ${subjectRule}`,
     stepRule,
     followUp,
     filterRule,
     browsingRule,
-    `RESPONSE BEHAVIOR (adaptive):
-- Match the message type. Casual greetings (e.g. "hi", "thanks") get a short, natural reply with NO explanation.
-- Real questions or concepts: explain clearly and confidently in plain paragraphs. Add a brief, useful insight when it helps.
-- Academic / problem-solving questions: show step-by-step working and clearly mark the final answer (e.g. "Final answer: ...").
-- If a question is ambiguous, briefly note the most likely interpretations or ask one short clarifying question.
-- Be honest about limits: if you don't know or can't verify, say so plainly instead of guessing.
-- Keep a calm, confident, human tone — never robotic, never preachy. No filler, no repetition, no hedging.
-- Use bullet points only when they genuinely help (steps, comparisons, lists). Otherwise prefer clean paragraphs. Never use headings unless asked.
-- For unsafe or harmful requests: refuse briefly and respectfully, state why in one line, and suggest a safe alternative. Do not lecture.`,
+    `VICEN AI — RESPONSE BEHAVIOR:
+- Tone: natural, human, conversational. Confident but warm. Never robotic, never preachy.
+- Greetings / small talk ("hi", "thanks", "ok"): reply naturally in 1–2 sentences with NO explanation.
+- Concept / general questions: explain clearly and simply in clean paragraphs. Add one brief useful insight when it helps. Avoid one-line vague answers.
+- Academic / problem-solving: show step-by-step working, then a clearly separated final answer on its own line as **Final answer:** <result>. Verify the math before answering.
+- Ambiguous questions: briefly mention the likely interpretations or ask ONE short clarifying question — never guess silently.
+- Honesty: if you don't know or can't verify, say "I'm not sure" plainly. Do not invent facts.
+- Formatting: prefer clean paragraphs. Use **markdown** — bold for key terms, bullet lists for steps/comparisons, line spacing for readability. Use headings only when explicitly asked.
+- Safety: refuse harmful or dangerous requests politely in one line, give a one-line reason, and suggest a safe alternative. Do not lecture.`,
     `Current date information: ${dateInfo}`,
     `ENFORCEMENT: These settings are mandatory system rules. Never ignore length limits, tone, or language settings for any reason.`,
   ].filter(Boolean).join("\n\n");
@@ -108,11 +119,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, settings, browsing } = await req.json();
+    const { messages, settings, browsing, lengthMode } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = buildSystemPrompt(settings, !!browsing);
+    const systemPrompt = buildSystemPrompt(settings, !!browsing, lengthMode);
 
     // When browsing is enabled, use a Gemini model with google_search grounding
     const model = browsing ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
@@ -124,6 +135,7 @@ serve(async (req) => {
         ...messages,
       ],
       stream: true,
+      temperature: 0.7,
     };
 
     if (browsing) {
