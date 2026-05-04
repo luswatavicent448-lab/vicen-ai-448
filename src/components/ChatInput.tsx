@@ -91,6 +91,19 @@ export function ChatInput({
 
   return (
     <div className="border-t border-border bg-background p-3 sm:p-4">
+      {dictation.listening && (
+        <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60 animate-ping" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive" />
+          </span>
+          <span className="truncate">
+            {dictation.interim
+              ? `Listening… "${dictation.interim}"`
+              : "Listening… speak naturally, pause when done."}
+          </span>
+        </div>
+      )}
       <div className="max-w-3xl mx-auto flex gap-2 items-end">
         <button
           type="button"
