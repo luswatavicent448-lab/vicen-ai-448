@@ -119,11 +119,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, settings, browsing } = await req.json();
+    const { messages, settings, browsing, lengthMode } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = buildSystemPrompt(settings, !!browsing);
+    const systemPrompt = buildSystemPrompt(settings, !!browsing, lengthMode);
 
     // When browsing is enabled, use a Gemini model with google_search grounding
     const model = browsing ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
@@ -135,6 +135,7 @@ serve(async (req) => {
         ...messages,
       ],
       stream: true,
+      temperature: 0.7,
     };
 
     if (browsing) {
