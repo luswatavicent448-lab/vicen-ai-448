@@ -27,6 +27,22 @@ function saveConversations(convos: Conversation[]) {
   localStorage.setItem("vicen-conversations", JSON.stringify(convos));
 }
 
+function autoLengthFor(text: string): "short" | "medium" | "detailed" {
+  const t = text.trim();
+  const len = t.length;
+  const wordCount = t.split(/\s+/).filter(Boolean).length;
+  // Greetings / very short → short
+  if (len < 12 || wordCount <= 2) return "short";
+  // Academic / problem-solving / multi-sentence → detailed
+  if (
+    len > 120 ||
+    wordCount > 22 ||
+    /\b(explain|why|how|prove|solve|derive|compare|difference|step[- ]by[- ]step|essay|analy[sz]e|describe in detail)\b/i.test(t) ||
+    /[=+\-*/^]|\d+\s*[+\-*/x×÷]\s*\d+/.test(t)
+  ) return "detailed";
+  return "medium";
+}
+
 export default function ChatPage() {
   const { settings } = useSettings();
   const navigate = useNavigate();
@@ -122,6 +138,7 @@ export default function ChatPage() {
     }
 
     const userMsg: Message = { role: "user", content: text };
+    const pickedLength = autoLengthFor(text);
 
     setConversations((prev) =>
       prev.map((c) => {
@@ -149,9 +166,18 @@ export default function ChatPage() {
           const msgs = [...c.messages];
           const last = msgs[msgs.length - 1];
           if (last?.role === "assistant") {
-            msgs[msgs.length - 1] = { ...last, content };
+            msgs[msgs.length - 1] = {
+              ...last,
+              content,
+              variants: { ...(last.variants || {}), [pickedLength]: content },
+            };
           } else {
-            msgs.push({ role: "assistant", content });
+            msgs.push({
+              role: "assistant",
+              content,
+              lengthMode: pickedLength,
+              variants: { [pickedLength]: content },
+            });
           }
           return { ...c, messages: msgs };
         })
@@ -177,6 +203,7 @@ export default function ChatPage() {
         messages: currentMessages,
         settings: settings as unknown as Record<string, unknown>,
         browsing: effectiveBrowsing,
+        lengthMode: pickedLength,
         onDelta: upsertAssistant,
         onCitations: setCitations,
         onDone: () => setIsStreaming(false),
@@ -190,6 +217,99 @@ export default function ChatPage() {
       setIsStreaming(false);
     }
   };
+
+  // Regenerate the assistant message at index `assistantIdx` in the active conversation
+  // using the requested length mode. The user message just before it is the prompt.
+  const regenerateAt = useCallback(
+    async (assistantIdx: number, mode: "short" | "medium" | "detailed") => {
+      if (!active) return;
+      const msgs = active.messages;
+      const target = msgs[assistantIdx];
+      if (!target || target.role !== "assistant") return;
+
+      // If we already have this variant cached, just swap content
+      if (target.variants?.[mode]) {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id !== active.id
+              ? c
+              : {
+                  ...c,
+                  messages: c.messages.map((m, i) =>
+                    i === assistantIdx
+                      ? { ...m, content: target.variants![mode]!, lengthMode: mode }
+                      : m,
+                  ),
+                },
+          ),
+        );
+        return;
+      }
+
+      // History up to (but not including) the target assistant message
+      const history = msgs.slice(0, assistantIdx);
+      if (history.length === 0 || history[history.length - 1].role !== "user") return;
+
+      // Mark target as streaming (clear content for now, keep variants)
+      const targetId = active.id;
+      setIsStreaming(true);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id !== targetId
+            ? c
+            : {
+                ...c,
+                messages: c.messages.map((m, i) =>
+                  i === assistantIdx ? { ...m, content: "", lengthMode: mode } : m,
+                ),
+              },
+        ),
+      );
+
+      let acc = "";
+      try {
+        await streamChat({
+          messages: history,
+          settings: settings as unknown as Record<string, unknown>,
+          browsing: false,
+          lengthMode: mode,
+          onDelta: (chunk) => {
+            acc += chunk;
+            const content = acc;
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id !== targetId
+                  ? c
+                  : {
+                      ...c,
+                      messages: c.messages.map((m, i) =>
+                        i === assistantIdx
+                          ? {
+                              ...m,
+                              content,
+                              lengthMode: mode,
+                              variants: { ...(m.variants || {}), [mode]: content },
+                            }
+                          : m,
+                      ),
+                    },
+              ),
+            );
+          },
+          onCitations: () => {},
+          onDone: () => setIsStreaming(false),
+          onError: (err) => {
+            toast.error(err);
+            setIsStreaming(false);
+          },
+        });
+      } catch {
+        toast.error("Failed to regenerate");
+        setIsStreaming(false);
+      }
+    },
+    [active, settings],
+  );
 
   const handleDelete = (id: string) => {
     setConversations((prev) => prev.filter((c) => c.id !== id));
