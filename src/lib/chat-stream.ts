@@ -54,6 +54,7 @@ export async function streamChat({
   messages,
   settings,
   browsing,
+  lengthMode,
   onDelta,
   onCitations,
   onDone,
@@ -62,6 +63,7 @@ export async function streamChat({
   messages: Message[];
   settings?: Record<string, unknown>;
   browsing?: boolean;
+  lengthMode?: "short" | "medium" | "detailed" | "auto";
   onDelta: (text: string) => void;
   onCitations?: (citations: Citation[]) => void;
   onDone: () => void;
@@ -73,7 +75,7 @@ export async function streamChat({
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages, settings, browsing: !!browsing }),
+    body: JSON.stringify({ messages, settings, browsing: !!browsing, lengthMode }),
   });
 
   if (!resp.ok) {
