@@ -72,9 +72,7 @@ export default function AccountPage() {
           />
         ) : (
           <div className="w-16 h-16 rounded-full bg-primary/80 flex items-center justify-center ring-2 ring-primary/40">
-            <span className="text-2xl font-semibold text-primary-foreground">
-              {(displayName?.[0] ?? email?.[0] ?? "G").toUpperCase()}
-            </span>
+            <span className="text-2xl font-semibold text-primary-foreground">{initial}</span>
           </div>
         )}
         <div className="flex-1 min-w-0">
