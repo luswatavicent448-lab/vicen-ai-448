@@ -396,11 +396,6 @@ export default function ChatPage() {
                       ? () => regenerateAt(i, m.lengthMode === "auto" || !m.lengthMode ? "medium" : m.lengthMode)
                       : undefined
                   }
-                  onSetLength={
-                    m.role === "assistant"
-                      ? (mode) => regenerateAt(i, mode)
-                      : undefined
-                  }
                 />
               ))}
               {isStreaming && active.messages[active.messages.length - 1]?.role === "user" && (

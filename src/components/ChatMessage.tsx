@@ -18,16 +18,12 @@ import { Message } from "@/types/chat";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type LengthMode = "short" | "medium" | "detailed" | "auto";
-
 export function ChatMessage({
   message,
   onRetry,
-  onSetLength,
 }: {
   message: Message;
   onRetry?: () => void;
-  onSetLength?: (mode: "short" | "medium" | "detailed") => void;
 }) {
   const isUser = message.role === "user";
   const hasCitations = !isUser && message.citations && message.citations.length > 0;
@@ -35,8 +31,6 @@ export function ChatMessage({
   const [vote, setVote] = useState<"up" | "down" | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const currentMode: LengthMode = message.lengthMode || "auto";
 
   const handleCopy = async () => {
     try {
@@ -83,20 +77,6 @@ export function ChatMessage({
     const q = message.content.slice(0, 200);
     window.open("https://www.google.com/search?q=" + encodeURIComponent(q), "_blank");
   };
-
-  const lengthBtn = (mode: "short" | "medium" | "detailed", label: string) => (
-    <button
-      onClick={() => onSetLength?.(mode)}
-      className={cn(
-        "px-2.5 py-1 text-[11px] rounded-md transition-colors",
-        currentMode === mode
-          ? "bg-primary text-primary-foreground"
-          : "bg-secondary text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {label}
-    </button>
-  );
 
   const iconBtn = (
     Icon: typeof Copy,
@@ -193,13 +173,6 @@ export function ChatMessage({
                 </div>
               )}
             </div>
-            {onSetLength && (
-              <div className="ml-auto flex items-center gap-1">
-                {lengthBtn("short", "Short")}
-                {lengthBtn("medium", "Medium")}
-                {lengthBtn("detailed", "Detailed")}
-              </div>
-            )}
           </div>
         )}
       </div>
