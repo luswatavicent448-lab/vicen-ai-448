@@ -183,11 +183,11 @@ export function ChatMessage({
 export function TypingIndicator() {
   return (
     <div className="flex justify-start animate-fade-up">
-      <div className="bg-chat-bot px-4 py-3 rounded-2xl rounded-bl-md flex gap-1.5 items-center">
+      <div className="px-1 py-2 flex gap-1.5 items-center">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="w-2 h-2 rounded-full bg-muted-foreground"
+            className="w-1.5 h-1.5 rounded-full bg-primary/70"
             style={{
               animation: `typing-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
             }}
