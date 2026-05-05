@@ -90,7 +90,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="border-t border-border bg-background p-3 sm:p-4">
+    <div className="p-3 sm:p-4 pb-4 sm:pb-6 bg-gradient-to-t from-background via-background/80 to-transparent">
       {dictation.listening && (
         <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 text-xs text-muted-foreground">
           <span className="relative flex h-2 w-2">
@@ -104,17 +104,17 @@ export function ChatInput({
           </span>
         </div>
       )}
-      <div className="max-w-3xl mx-auto flex gap-2 items-end">
+      <div className="max-w-3xl mx-auto glass-strong rounded-3xl shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)] p-1.5 flex gap-1.5 items-end">
         <button
           type="button"
           onClick={onToggleBrowsing}
           title={browsing ? "Browsing on — click to disable" : "Enable browsing for live web answers"}
           aria-pressed={browsing}
           className={cn(
-            "shrink-0 h-10 px-3 rounded-xl flex items-center gap-1.5 text-xs font-medium transition-all",
+            "shrink-0 h-10 px-3 rounded-2xl flex items-center gap-1.5 text-xs font-medium transition-all",
             browsing
               ? "bg-primary text-primary-foreground shadow-md"
-              : "bg-secondary text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
           )}
         >
           <Globe className="w-4 h-4" />
@@ -127,7 +127,7 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={dictation.listening ? "Listening…" : browsing ? "Search the web..." : "Ask anything..."}
           rows={1}
-          className="flex-1 resize-none bg-secondary text-foreground placeholder:text-muted-foreground rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 scrollbar-thin"
+          className="flex-1 resize-none bg-transparent text-foreground placeholder:text-muted-foreground/70 rounded-2xl px-3 py-2.5 text-[15px] leading-relaxed focus:outline-none scrollbar-thin"
         />
         <button
           type="button"
@@ -135,16 +135,16 @@ export function ChatInput({
           aria-pressed={dictation.listening}
           title={dictation.listening ? "Stop dictation" : "Start dictation"}
           className={cn(
-            "relative shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+            "relative shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center transition-all",
             dictation.listening
               ? "bg-destructive text-destructive-foreground shadow-md"
-              : "bg-secondary text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
           )}
         >
           {dictation.listening && (
             <>
-              <span className="absolute inset-0 rounded-xl bg-destructive/40 animate-ping" />
-              <span className="absolute inset-0 rounded-xl ring-2 ring-destructive/60" />
+              <span className="absolute inset-0 rounded-2xl bg-destructive/40 animate-ping" />
+              <span className="absolute inset-0 rounded-2xl ring-2 ring-destructive/60" />
             </>
           )}
           {dictation.listening ? (
@@ -156,7 +156,7 @@ export function ChatInput({
         <button
           onClick={handleSend}
           disabled={disabled || !text.trim()}
-          className="shrink-0 w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center transition-all hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="shrink-0 w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center transition-all hover:brightness-110 shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.6)] disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
         >
           <Send className="w-4 h-4" />
         </button>

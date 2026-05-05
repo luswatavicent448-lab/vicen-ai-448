@@ -105,10 +105,10 @@ export function ChatMessage({
     >
       <div className={`max-w-[85%] ${isUser ? "" : "w-full"}`}>
         <div
-          className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+          className={`text-[15px] leading-[1.65] ${
             isUser
-              ? "bg-chat-user text-primary-foreground rounded-br-md inline-block"
-              : "bg-chat-bot text-foreground rounded-bl-md"
+              ? "px-5 py-3 rounded-[22px] rounded-br-lg bg-primary text-primary-foreground inline-block shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.45)]"
+              : "px-1 py-1 text-foreground"
           }`}
         >
         {isUser ? (
@@ -183,11 +183,11 @@ export function ChatMessage({
 export function TypingIndicator() {
   return (
     <div className="flex justify-start animate-fade-up">
-      <div className="bg-chat-bot px-4 py-3 rounded-2xl rounded-bl-md flex gap-1.5 items-center">
+      <div className="px-1 py-2 flex gap-1.5 items-center">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="w-2 h-2 rounded-full bg-muted-foreground"
+            className="w-1.5 h-1.5 rounded-full bg-primary/70"
             style={{
               animation: `typing-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
             }}
