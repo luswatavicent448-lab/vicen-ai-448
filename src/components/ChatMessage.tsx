@@ -18,15 +18,12 @@ import { Message } from "@/types/chat";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type LengthMode = "short" | "medium" | "detailed" | "auto";
-
 export function ChatMessage({
   message,
   onRetry,
 }: {
   message: Message;
   onRetry?: () => void;
-  onSetLength?: (mode: "short" | "medium" | "detailed") => void;
 }) {
   const isUser = message.role === "user";
   const hasCitations = !isUser && message.citations && message.citations.length > 0;
