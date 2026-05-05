@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp, User, Shield, Cloud, Bell, Heart, LogOut } from "lucide-react";
 import { SettingsSubPage } from "@/components/SettingsSubPage";
 import { AccountSection } from "@/components/AccountSection";
