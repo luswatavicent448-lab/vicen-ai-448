@@ -188,7 +188,9 @@ export function useDictation({
       clearSilenceTimer();
       setListening(false);
       setInterim("");
-      const final = finalBufRef.current.trim();
+      const dedupe = (s: string) =>
+        s.replace(/\b(\w+(?:\s+\w+){0,4})\s+\1\b/gi, "$1").replace(/\s+/g, " ").trim();
+      const final = dedupe(finalBufRef.current);
       // Drop fragments that are too short unless user manually stopped
       const words = final.split(/\s+/).filter(Boolean);
       if (final && (manualStopRef.current || words.length >= 2)) {
