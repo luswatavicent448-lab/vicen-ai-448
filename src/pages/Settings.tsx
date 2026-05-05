@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   X,
   ChevronRight,
@@ -12,7 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useUserProfile } from "@/hooks/use-user-profile";
 
 type Category = {
   id: string;
@@ -64,20 +63,8 @@ const GROUPS: { label: string; items: Category[] }[] = [
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setEmail(session?.user?.email ?? null);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      setEmail(s?.user?.email ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const initial = (email?.[0] ?? "G").toUpperCase();
-  const displayName = email ? email.split("@")[0] : "Guest User";
+  const { email, displayName, avatarUrl, initial } = useUserProfile();
+  const shownName = displayName || (email ? email.split("@")[0] : "Guest User");
 
   return (
     <div className="min-h-dvh bg-background">
@@ -101,11 +88,19 @@ export default function SettingsPage() {
         >
           {email ? (
             <>
-              <div className="w-14 h-14 rounded-full bg-primary/80 flex items-center justify-center ring-2 ring-border">
-                <span className="text-2xl font-semibold text-primary-foreground">{initial}</span>
-              </div>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="w-14 h-14 rounded-full object-cover ring-2 ring-border"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-primary/80 flex items-center justify-center ring-2 ring-border">
+                  <span className="text-2xl font-semibold text-primary-foreground">{initial}</span>
+                </div>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="font-semibold uppercase tracking-wide text-foreground truncate">{displayName}</p>
+                <p className="font-semibold uppercase tracking-wide text-foreground truncate">{shownName}</p>
                 <p className="text-sm text-muted-foreground truncate">{email}</p>
               </div>
             </>
