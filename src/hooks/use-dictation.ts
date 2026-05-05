@@ -144,16 +144,24 @@ export function useDictation({
       armSilenceTimer();
     };
     rec.onresult = (e: SREvent) => {
+      // Rebuild final + interim from the FULL results list every event.
+      // This avoids duplicate concatenation when browsers re-emit results
+      // (e.g. Chrome continuous mode) and guarantees interim *replaces*
+      // rather than appends.
+      const finals: string[] = [];
       let interimText = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      for (let i = 0; i < e.results.length; i++) {
         const r = e.results[i];
-        const txt = r[0].transcript;
-        if (r.isFinal) {
-          finalBufRef.current += (finalBufRef.current ? " " : "") + txt.trim();
-        } else {
-          interimText += txt;
-        }
+        const txt = (r[0].transcript || "").trim();
+        if (!txt) continue;
+        if (r.isFinal) finals.push(txt);
+        else interimText += (interimText ? " " : "") + txt;
       }
+      // Dedupe consecutive repeated phrases (e.g. "what what is" → "what is")
+      const dedupe = (s: string) =>
+        s.replace(/\b(\w+(?:\s+\w+){0,4})\s+\1\b/gi, "$1").replace(/\s+/g, " ").trim();
+      finalBufRef.current = dedupe(finals.join(" "));
+      interimText = dedupe(interimText);
       setInterim(interimText);
       if (interimText) onInterim?.(interimText);
       // Voice command: "stop listening"
