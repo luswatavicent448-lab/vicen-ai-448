@@ -6,6 +6,7 @@ import { ProfileEditor } from "@/components/ProfileEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { useUserProfile } from "@/hooks/use-user-profile";
 
 function Collapse({
   icon: Icon,
@@ -45,24 +46,8 @@ function Collapse({
 }
 
 export default function AccountPage() {
-  const [email, setEmail] = useState<string | null>(null);
-  const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const { email, displayName, avatarUrl, createdAt, initial } = useUserProfile();
   const [cloudBackup, setCloudBackup] = useState(true);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState<string | null>(null);
-
-  useEffect(() => {
-    const sync = (user: any) => {
-      setEmail(user?.email ?? null);
-      setCreatedAt(user?.created_at ?? null);
-      const meta = user?.user_metadata ?? {};
-      setAvatarUrl(meta.avatar_url ?? null);
-      setDisplayName(meta.display_name || meta.full_name || meta.name || null);
-    };
-    supabase.auth.getUser().then(({ data }) => sync(data.user));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => sync(s?.user));
-    return () => subscription.unsubscribe();
-  }, []);
 
   const accountAge = createdAt
     ? Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000))
