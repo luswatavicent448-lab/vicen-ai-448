@@ -154,6 +154,10 @@ export function ProfileStudio({ open, onClose, currentAvatarUrl, onSaved }: Prop
       }
 
       toast.success("Profile picture updated");
+      try {
+        const { notifyProfileUpdated } = await import("@/hooks/use-user-profile");
+        notifyProfileUpdated();
+      } catch { /* noop */ }
       onSaved?.(publicUrl);
       onClose();
     } catch (e: any) {
@@ -174,6 +178,10 @@ export function ProfileStudio({ open, onClose, currentAvatarUrl, onSaved }: Prop
       if (paths.length) await supabase.storage.from("avatars").remove(paths);
       await supabase.auth.updateUser({ data: { avatar_url: null } });
       toast.success("Profile picture removed");
+      try {
+        const { notifyProfileUpdated } = await import("@/hooks/use-user-profile");
+        notifyProfileUpdated();
+      } catch { /* noop */ }
       onSaved?.(null);
       onClose();
     } catch (e: any) {
