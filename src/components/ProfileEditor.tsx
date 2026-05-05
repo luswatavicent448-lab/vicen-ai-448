@@ -74,6 +74,10 @@ export function ProfileEditor() {
     setDisplayName(parsed.data);
     setEditingName(false);
     toast.success("Name updated");
+    try {
+      const { notifyProfileUpdated } = await import("@/hooks/use-user-profile");
+      notifyProfileUpdated();
+    } catch { /* noop */ }
     void data;
   };
 
