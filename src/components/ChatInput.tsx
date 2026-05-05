@@ -57,6 +57,27 @@ export function ChatInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Pause the mic while the AI is responding/speaking — prevents the
+  // model's audio (or TTS) from being re-transcribed back into the input.
+  useEffect(() => {
+    if (disabled && dictation.listening) {
+      try { dictation.stop(); } catch { /* noop */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disabled]);
+
+  // Also pause while the browser's speechSynthesis is talking (read-aloud).
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const id = window.setInterval(() => {
+      if (window.speechSynthesis.speaking && dictation.listening) {
+        try { dictation.stop(); } catch { /* noop */ }
+      }
+    }, 400);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dictation.listening]);
+
   const handleSend = () => {
     const trimmed = text.trim();
     if (!trimmed || disabled) return;
