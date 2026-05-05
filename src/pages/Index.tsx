@@ -336,39 +336,36 @@ export default function ChatPage() {
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center sm:hidden"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
-          <div className="flex items-center gap-2 flex-1">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary" />
-            </div>
-            <span className="font-semibold text-base tracking-tight">Vicen AI</span>
-            {userMode && (
-              <span className="text-xs text-muted-foreground ml-1 truncate max-w-[120px]">
-                ({userMode === "guest" ? "Guest" : userEmail || "Signed in"})
-              </span>
-            )}
+        <header className="grid grid-cols-3 items-center px-4 py-3 shrink-0 glass">
+          <div className="flex items-center justify-start">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors sm:hidden"
+            >
+              <Menu className="w-[18px] h-[18px]" />
+            </button>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="font-semibold text-[15px] tracking-tight">Vicen AI</span>
+          </div>
+          <div className="flex items-center justify-end gap-0.5">
             {userMode === "signed-in" && (
               <button
                 onClick={handleSignOut}
-                className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
-                title="Sign out"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+                title={userEmail || "Sign out"}
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-[18px] h-[18px]" />
               </button>
             )}
             <button
               onClick={() => navigate("/settings")}
-              className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-[18px] h-[18px]" />
             </button>
           </div>
         </header>
