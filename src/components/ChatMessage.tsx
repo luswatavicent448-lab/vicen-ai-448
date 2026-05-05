@@ -105,10 +105,10 @@ export function ChatMessage({
     >
       <div className={`max-w-[85%] ${isUser ? "" : "w-full"}`}>
         <div
-          className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+          className={`text-[15px] leading-[1.65] ${
             isUser
-              ? "bg-chat-user text-primary-foreground rounded-br-md inline-block"
-              : "bg-chat-bot text-foreground rounded-bl-md"
+              ? "px-5 py-3 rounded-[22px] rounded-br-lg bg-primary text-primary-foreground inline-block shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.45)]"
+              : "px-1 py-1 text-foreground"
           }`}
         >
         {isUser ? (
