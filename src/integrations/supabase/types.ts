@@ -169,6 +169,36 @@ export type Database = {
         }
         Relationships: []
       }
+      private_knowledge: {
+        Row: {
+          content: string
+          created_at: string
+          filename: string | null
+          id: string
+          kind: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          filename?: string | null
+          id?: string
+          kind?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          filename?: string | null
+          id?: string
+          kind?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       room_members: {
         Row: {
           display_name: string
