@@ -9,6 +9,7 @@ import {
   Info,
   LifeBuoy,
   Sparkles,
+  BookLock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUserProfile } from "@/hooks/use-user-profile";
@@ -44,6 +45,7 @@ const GROUPS: { label: string; items: Category[] }[] = [
     label: "Intelligence",
     items: [
       { id: "ai", title: "AI Controls", subtitle: "Reasoning, memory, safety", icon: Brain, route: "/settings/ai" },
+      { id: "knowledge", title: "Private Knowledge", subtitle: "Upload .md / .json used silently by Vicen", icon: BookLock, route: "/settings/knowledge" },
     ],
   },
   {

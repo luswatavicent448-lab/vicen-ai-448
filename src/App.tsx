@@ -8,6 +8,7 @@ import Settings from "./pages/Settings.tsx";
 import AccountPage from "./pages/settings/Account.tsx";
 import GeneralPage from "./pages/settings/General.tsx";
 import VoicePage from "./pages/settings/Voice.tsx";
+import KnowledgePage from "./pages/settings/Knowledge.tsx";
 import { AIPage, NotificationsPage, AboutPage, SupportPage } from "./pages/settings/Stub.tsx";
 import Notes from "./pages/Notes.tsx";
 import PastPapers from "./pages/PastPapers.tsx";
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/settings/account" element={<AccountPage />} />
           <Route path="/settings/general" element={<GeneralPage />} />
           <Route path="/settings/voice" element={<VoicePage />} />
+          <Route path="/settings/knowledge" element={<KnowledgePage />} />
           <Route path="/settings/ai" element={<AIPage />} />
           <Route path="/settings/notifications" element={<NotificationsPage />} />
           <Route path="/settings/about" element={<AboutPage />} />
