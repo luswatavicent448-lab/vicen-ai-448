@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Send, Copy, Users, LogOut, Plus, Lock, Globe, KeyRound, Mic, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { VoiceMessage } from "@/components/group-chat/VoiceMessage";
 
 type Message = {
   id: string;
