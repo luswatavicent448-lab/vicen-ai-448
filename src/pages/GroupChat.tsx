@@ -687,19 +687,11 @@ export default function GroupChat() {
                     </p>
                   )}
                   {m.message_type === "voice" && m.attachment_url ? (
-                    <div className="flex flex-col gap-1 min-w-[200px]">
-                      <audio
-                        controls
-                        src={m.attachment_url}
-                        className="w-full h-9"
-                        preload="metadata"
-                      />
-                      {m.attachment_duration_ms ? (
-                        <span className={`text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                          {formatDuration(m.attachment_duration_ms)}
-                        </span>
-                      ) : null}
-                    </div>
+                    <VoiceMessage
+                      attachment={m.attachment_url}
+                      durationMs={m.attachment_duration_ms}
+                      mine={mine}
+                    />
                   ) : (
                     <p className="whitespace-pre-wrap break-words">{m.content}</p>
                   )}
