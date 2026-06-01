@@ -1,10 +1,22 @@
 import { useEffect, useState } from "react";
-import { Upload, Trash2, FileText, Lock } from "lucide-react";
+import { Upload, Trash2, FileText, Lock, ShieldCheck, ShieldAlert, Loader2 } from "lucide-react";
 import { SettingsSubPage, SettingsGroup } from "@/components/SettingsSubPage";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const MAX_BYTES = 200_000; // ~200 KB cap to keep prompts tight
+
+type BlockedChunk = { text: string; reason: string };
+type ClassifyResult = { allowed: string; blocked: BlockedChunk[] };
+
+const REASON_LABELS: Record<string, string> = {
+  world_fact: "General world fact",
+  political_or_country: "Political / country claim",
+  ai_instruction: "AI behavior instruction",
+  third_party: "About someone else",
+  code: "Code or technical snippet",
+  other: "Not personal information",
+};
 
 export default function KnowledgePage() {
   const [content, setContent] = useState("");
@@ -12,6 +24,8 @@ export default function KnowledgePage() {
   const [filename, setFilename] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [classifying, setClassifying] = useState(false);
+  const [lastReview, setLastReview] = useState<ClassifyResult | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -62,12 +76,40 @@ export default function KnowledgePage() {
       try { JSON.parse(content); } catch { toast.error("Invalid JSON"); return; }
     }
     setSaving(true);
+    setClassifying(true);
+    setLastReview(null);
+    // Run the personal-only safety classifier first.
+    const { data: result, error: classifyErr } = await supabase.functions.invoke<ClassifyResult>(
+      "classify-knowledge",
+      { body: { content } },
+    );
+    setClassifying(false);
+    if (classifyErr || !result) {
+      setSaving(false);
+      toast.error("Safety check unavailable. Please try again.");
+      return;
+    }
+    setLastReview(result);
+    const cleaned = (result.allowed || "").trim();
+    if (!cleaned) {
+      setSaving(false);
+      toast.error("Nothing personal was found. Only personal info about you can be stored.");
+      return;
+    }
     const { error } = await supabase
       .from("private_knowledge")
-      .upsert({ user_id: u.user.id, content, kind, filename }, { onConflict: "user_id" });
+      .upsert(
+        { user_id: u.user.id, content: cleaned, kind, filename },
+        { onConflict: "user_id" },
+      );
     setSaving(false);
-    if (error) toast.error(error.message);
-    else toast.success("Private knowledge saved");
+    if (error) { toast.error(error.message); return; }
+    setContent(cleaned);
+    if (result.blocked.length > 0) {
+      toast.success(`Saved. ${result.blocked.length} non-personal item(s) were removed.`);
+    } else {
+      toast.success("Private knowledge saved");
+    }
   };
 
   const clear = async () => {
@@ -85,9 +127,10 @@ export default function KnowledgePage() {
         <div className="px-4 py-3 text-sm text-muted-foreground flex gap-3">
           <Lock className="w-4 h-4 mt-0.5 shrink-0" />
           <p>
-            Upload a private <code>.md</code> or <code>.json</code> file. Vicen AI uses it
-            silently in the system prompt to answer your questions. It is never shown to
-            other users and never displayed in chat.
+            Store ONLY personal info about you — name, school, grade, subject preferences,
+            learning style, profile notes. Vicen AI uses it silently to personalize answers.
+            Your data is isolated per account; no one else can read it.
+            General facts, opinions, country claims, and AI instructions are automatically blocked.
           </p>
         </div>
       </SettingsGroup>
@@ -140,15 +183,52 @@ export default function KnowledgePage() {
               </button>
               <button
                 onClick={save}
-                disabled={saving}
+                disabled={saving || classifying}
                 className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50"
               >
-                {saving ? "Saving…" : "Save"}
+                {classifying ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking…
+                  </span>
+                ) : saving ? "Saving…" : "Save"}
               </button>
             </div>
           </div>
         </div>
       </SettingsGroup>
+
+      {lastReview && (
+        <SettingsGroup label="Safety review">
+          <div className="px-4 py-3 space-y-3 text-sm">
+            <div className="flex items-start gap-2 text-emerald-400">
+              <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0" />
+              <p>
+                {lastReview.allowed.trim()
+                  ? "Personal info accepted and stored."
+                  : "No personal info detected."}
+              </p>
+            </div>
+            {lastReview.blocked.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-amber-400">
+                  <ShieldAlert className="w-4 h-4" />
+                  <span>{lastReview.blocked.length} item(s) blocked</span>
+                </div>
+                <ul className="space-y-1.5">
+                  {lastReview.blocked.map((b, i) => (
+                    <li key={i} className="rounded-lg border border-border bg-background/50 px-3 py-2">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        {REASON_LABELS[b.reason] || "Not personal"}
+                      </div>
+                      <div className="text-foreground/90 break-words">"{b.text}"</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </SettingsGroup>
+      )}
     </SettingsSubPage>
   );
 }
