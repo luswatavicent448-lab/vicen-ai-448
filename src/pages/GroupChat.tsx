@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Send, Copy, Users, LogOut, Plus, Lock, Globe, KeyRound, Mic, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { VoiceMessage } from "@/components/group-chat/VoiceMessage";
 
 type Message = {
   id: string;
@@ -391,14 +392,15 @@ export default function GroupChat() {
           toast.error("Upload failed");
           return;
         }
-        const { data: pub } = supabase.storage.from("voice-messages").getPublicUrl(path);
+        // Store the storage path; signed URLs are generated on render
+        // since the voice-messages bucket is private (room-member only).
         const { error: insErr } = await supabase.from("chat_messages").insert({
           room_id: roomId,
           user_id: userId,
           sender_name: displayName,
           content: "🎤 Voice message",
           message_type: "voice",
-          attachment_url: pub.publicUrl,
+          attachment_url: path,
           attachment_duration_ms: duration,
         });
         setUploadingVoice(false);
@@ -686,19 +688,11 @@ export default function GroupChat() {
                     </p>
                   )}
                   {m.message_type === "voice" && m.attachment_url ? (
-                    <div className="flex flex-col gap-1 min-w-[200px]">
-                      <audio
-                        controls
-                        src={m.attachment_url}
-                        className="w-full h-9"
-                        preload="metadata"
-                      />
-                      {m.attachment_duration_ms ? (
-                        <span className={`text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                          {formatDuration(m.attachment_duration_ms)}
-                        </span>
-                      ) : null}
-                    </div>
+                    <VoiceMessage
+                      attachment={m.attachment_url}
+                      durationMs={m.attachment_duration_ms}
+                      mine={mine}
+                    />
                   ) : (
                     <p className="whitespace-pre-wrap break-words">{m.content}</p>
                   )}
