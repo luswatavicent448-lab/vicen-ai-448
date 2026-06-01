@@ -391,14 +391,15 @@ export default function GroupChat() {
           toast.error("Upload failed");
           return;
         }
-        const { data: pub } = supabase.storage.from("voice-messages").getPublicUrl(path);
+        // Store the storage path; signed URLs are generated on render
+        // since the voice-messages bucket is private (room-member only).
         const { error: insErr } = await supabase.from("chat_messages").insert({
           room_id: roomId,
           user_id: userId,
           sender_name: displayName,
           content: "🎤 Voice message",
           message_type: "voice",
-          attachment_url: pub.publicUrl,
+          attachment_url: path,
           attachment_duration_ms: duration,
         });
         setUploadingVoice(false);
