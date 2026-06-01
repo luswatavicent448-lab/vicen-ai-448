@@ -14,6 +14,30 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // --- AuthN: validate JWT from caller ---
+    const authHeader = req.headers.get("Authorization") || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const callerId = claimsData.claims.sub as string;
+
     const { roomId, userMessage, senderName, history } = await req.json();
     if (!roomId || !userMessage) {
       return new Response(JSON.stringify({ error: "roomId and userMessage required" }), {
@@ -22,9 +46,22 @@ serve(async (req) => {
       });
     }
 
+    // --- AuthZ: caller must be a member of the room ---
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+    const { data: membership } = await admin
+      .from("room_members")
+      .select("user_id")
+      .eq("room_id", roomId)
+      .eq("user_id", callerId)
+      .maybeSingle();
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const recent = Array.isArray(history) ? history.slice(-8) : [];
@@ -77,7 +114,6 @@ You're one voice in a group — don't dominate; be helpful and natural.`;
     const reply = data?.choices?.[0]?.message?.content?.trim() || "🤖 (no reply)";
 
     // Insert as bot using service role (bypasses RLS)
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { error: insertErr } = await admin.from("chat_messages").insert({
       room_id: roomId,
       user_id: BOT_USER_ID,
