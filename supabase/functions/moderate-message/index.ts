@@ -278,10 +278,34 @@ serve(async (req) => {
   }
 
   try {
-    const { roomId, userId, senderName, content } = await req.json();
-    if (!roomId || !userId || !content) {
+    // --- AuthN: validate JWT and derive userId from claims (ignore client-supplied) ---
+    const authHeader = req.headers.get("Authorization") || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = claimsData.claims.sub as string;
+
+    const { roomId, senderName, content } = await req.json();
+    if (!roomId || !content) {
       return new Response(
-        JSON.stringify({ error: "roomId, userId, content required" }),
+        JSON.stringify({ error: "roomId and content required" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -289,9 +313,21 @@ serve(async (req) => {
       );
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+    // --- AuthZ: caller must be a member of the room ---
+    const { data: membership } = await admin
+      .from("room_members")
+      .select("user_id")
+      .eq("room_id", roomId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!membership) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // Load learned words (system-only access via service role)
     const { data: learnedRows } = await admin
