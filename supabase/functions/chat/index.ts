@@ -187,6 +187,26 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Require an authenticated user — prevents anonymous abuse of AI credits
+    const authHeader = req.headers.get("Authorization") || "";
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!authHeader.startsWith("Bearer ") || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: claimsData, error: claimsErr } = await authClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { messages, settings, browsing, lengthMode } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -194,19 +214,11 @@ serve(async (req) => {
     // Fetch the user's private knowledge using their JWT (RLS-enforced)
     let privateKnowledge: { content: string; kind: string } | null = null;
     try {
-      const authHeader = req.headers.get("Authorization") || "";
-      const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-      if (authHeader.startsWith("Bearer ") && SUPABASE_URL && SUPABASE_ANON_KEY) {
-        const supa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          global: { headers: { Authorization: authHeader } },
-        });
-        const { data } = await supa
-          .from("private_knowledge")
-          .select("content, kind")
-          .maybeSingle();
-        if (data && data.content) privateKnowledge = { content: data.content, kind: data.kind || "md" };
-      }
+      const { data } = await authClient
+        .from("private_knowledge")
+        .select("content, kind")
+        .maybeSingle();
+      if (data && data.content) privateKnowledge = { content: data.content, kind: data.kind || "md" };
     } catch (e) {
       console.error("private_knowledge fetch failed:", e);
     }
