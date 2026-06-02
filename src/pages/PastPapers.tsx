@@ -11,6 +11,15 @@ type Paper = {
   file_url: string;
 };
 
+// Resolve a stored file_url which may be either a legacy public URL or a storage path.
+async function resolvePaperUrl(file_url: string): Promise<string> {
+  if (!file_url) return "";
+  if (/^https?:\/\//i.test(file_url)) return file_url;
+  const { data, error } = await supabase.storage.from("papers").createSignedUrl(file_url, 3600);
+  if (error || !data) return "";
+  return data.signedUrl;
+}
+
 const subjects = [
   "Mathematics", "Physics", "Chemistry", "Biology",
   "History", "Geography", "English", "French",
@@ -35,7 +44,13 @@ export default function PastPapersPage() {
     }
     const { data, error } = await supabase.from("past_papers").select("*").order("created_at", { ascending: false });
     if (error) toast.error("Failed to load papers");
-    else setPapers(data || []);
+    else {
+      const rows = data || [];
+      const resolved = await Promise.all(
+        rows.map(async (p: Paper) => ({ ...p, file_url: await resolvePaperUrl(p.file_url) }))
+      );
+      setPapers(resolved);
+    }
     setLoading(false);
   };
 
@@ -66,10 +81,9 @@ export default function PastPapersPage() {
     const { error: uploadError } = await supabase.storage.from("papers").upload(filePath, file);
     if (uploadError) { toast.error("Upload failed"); setUploading(false); return; }
 
-    const { data: urlData } = supabase.storage.from("papers").getPublicUrl(filePath);
-
+    // Store the storage path (not a public URL) — the bucket is private and we sign on demand.
     const { error } = await supabase.from("past_papers").insert({
-      user_id: user.id, subject, file_name: file.name, file_url: urlData.publicUrl,
+      user_id: user.id, subject, file_name: file.name, file_url: filePath,
     });
     if (error) { toast.error("Failed to save paper record"); setUploading(false); return; }
 
