@@ -46,3 +46,60 @@ export function isTimeSensitive(text: string): boolean {
 
   return false;
 }
+
+// --- Intent classification (Web Search & Intelligence v3.0) ---
+
+export type QueryIntent = "time_sensitive" | "stable_factual" | "conversational" | "ambiguous";
+
+const CONVERSATIONAL_PATTERNS = [
+  /^\s*(hi|hey|hello|yo|sup|hola|howdy)\b/i,
+  /^\s*(thanks|thank you|thx|ty)\b/i,
+  /^\s*(ok|okay|cool|nice|great|lol|haha)\b/i,
+  /^\s*(bye|goodbye|see ya|cya)\b/i,
+];
+
+const AMBIGUOUS_PATTERNS = [
+  /^\s*what happened\??\s*$/i,
+  /^\s*(any )?news\??\s*$/i,
+  /^\s*tell me more\??\s*$/i,
+  /^\s*and\??\s*$/i,
+];
+
+const CHANGE_WORDS = [
+  "released", "launched", "announced", "updated", "version", "winner",
+  "score", "scored", "ceo", "elected", "appointed",
+];
+
+/**
+ * Classify a single message with optional prior-message context inheritance.
+ * `priorTexts` is recent conversation (oldest → newest) used to inherit context
+ * for follow-ups like "who scored?" after a sports discussion.
+ */
+export function classifyIntent(text: string, priorTexts: string[] = []): QueryIntent {
+  const t = text.trim();
+  if (!t) return "conversational";
+
+  // Very short pure conversational
+  if (CONVERSATIONAL_PATTERNS.some((re) => re.test(t)) && t.split(/\s+/).length <= 3) {
+    return "conversational";
+  }
+
+  // Ambiguous follow-ups with no clear topic
+  if (AMBIGUOUS_PATTERNS.some((re) => re.test(t))) {
+    // Inherit context: if recent messages were time-sensitive, treat as time-sensitive
+    const inherited = priorTexts.slice(-4).some((p) => isTimeSensitive(p));
+    return inherited ? "time_sensitive" : "ambiguous";
+  }
+
+  if (isTimeSensitive(t)) return "time_sensitive";
+
+  const q = t.toLowerCase();
+  if (CHANGE_WORDS.some((w) => q.includes(w))) return "time_sensitive";
+
+  // Inherit time-sensitive context for short follow-ups
+  if (t.split(/\s+/).length <= 6 && priorTexts.slice(-3).some((p) => isTimeSensitive(p))) {
+    return "time_sensitive";
+  }
+
+  return "stable_factual";
+}
