@@ -3,8 +3,8 @@ import { Menu, Sparkles, Settings, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Conversation, Message } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
-import { isTimeSensitive } from "@/lib/time-sensitive";
-import { ChatMessage, TypingIndicator } from "@/components/ChatMessage";
+import { classifyIntent } from "@/lib/time-sensitive";
+import { ChatMessage, TypingIndicator, SearchingIndicator } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
 import { LoginScreen } from "@/components/LoginScreen";
@@ -51,6 +51,7 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [browsing, setBrowsing] = useState(false);
+  const [searchingLive, setSearchingLive] = useState(false);
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -130,11 +131,40 @@ export default function ChatPage() {
       targetId = createConversation(text);
     }
 
-    // Auto-enable browsing for this single message if the question is time-sensitive
-    const autoBrowse = !browsing && isTimeSensitive(text);
+    // Intent classification with context inheritance from recent user messages
+    const priorTexts =
+      conversations
+        .find((c) => c.id === targetId)
+        ?.messages.filter((m) => m.role === "user")
+        .map((m) => m.content) ?? [];
+    const intent = classifyIntent(text, priorTexts);
+
+    // Ambiguous → ask ONE focused clarifying question, do not search
+    if (intent === "ambiguous") {
+      const userMsg: Message = { role: "user", content: text };
+      const clarify: Message = {
+        role: "assistant",
+        content:
+          "Could you tell me a bit more about what you're referring to? For example, are you asking about a news event, a sports match, or something we were just discussing?",
+      };
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id !== targetId
+            ? c
+            : {
+                ...c,
+                title: c.messages.length === 0 ? text.slice(0, 40) : c.title,
+                messages: [...c.messages, userMsg, clarify],
+              },
+        ),
+      );
+      return;
+    }
+
+    const autoBrowse = !browsing && intent === "time_sensitive";
     const effectiveBrowsing = browsing || autoBrowse;
     if (autoBrowse) {
-      toast.info("🌐 Auto-enabled Browse for this question");
+      toast.info("🌐 Checking live data for this question");
     }
 
     const userMsg: Message = { role: "user", content: text };
@@ -150,6 +180,7 @@ export default function ChatPage() {
     );
 
     setIsStreaming(true);
+    if (effectiveBrowsing) setSearchingLive(true);
     let assistantContent = "";
 
     const currentMessages = [
@@ -158,6 +189,7 @@ export default function ChatPage() {
     ];
 
     const upsertAssistant = (chunk: string) => {
+      setSearchingLive(false);
       assistantContent += chunk;
       const content = assistantContent;
       setConversations((prev) =>
@@ -206,15 +238,17 @@ export default function ChatPage() {
         lengthMode: pickedLength,
         onDelta: upsertAssistant,
         onCitations: setCitations,
-        onDone: () => setIsStreaming(false),
+        onDone: () => { setIsStreaming(false); setSearchingLive(false); },
         onError: (err) => {
           toast.error(err);
           setIsStreaming(false);
+          setSearchingLive(false);
         },
       });
     } catch {
       toast.error("Failed to connect to AI");
       setIsStreaming(false);
+      setSearchingLive(false);
     }
   };
 
@@ -396,7 +430,7 @@ export default function ChatPage() {
                 />
               ))}
               {isStreaming && active.messages[active.messages.length - 1]?.role === "user" && (
-                <TypingIndicator />
+                searchingLive ? <SearchingIndicator /> : <TypingIndicator />
               )}
               <div ref={messagesEndRef} />
             </div>

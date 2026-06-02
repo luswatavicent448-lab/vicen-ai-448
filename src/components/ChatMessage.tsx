@@ -197,3 +197,14 @@ export function TypingIndicator() {
     </div>
   );
 }
+
+export function SearchingIndicator({ label = "Checking live data…" }: { label?: string }) {
+  return (
+    <div className="flex justify-start animate-fade-up">
+      <div className="px-3 py-2 flex gap-2 items-center rounded-full bg-primary/10 text-primary text-xs font-medium">
+        <Globe className="w-3.5 h-3.5 animate-pulse" />
+        <span>{label}</span>
+      </div>
+    </div>
+  );
+}
