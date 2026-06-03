@@ -1,5 +1,5 @@
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
-import { Send, Globe, Mic, MicOff } from "lucide-react";
+import { Send, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDictation, toBCP47 } from "@/hooks/use-dictation";
 import { useVoiceSettings } from "@/hooks/use-voice-settings";
@@ -8,13 +8,9 @@ import { toast } from "sonner";
 export function ChatInput({
   onSend,
   disabled,
-  browsing,
-  onToggleBrowsing,
 }: {
   onSend: (text: string) => void;
   disabled: boolean;
-  browsing: boolean;
-  onToggleBrowsing: () => void;
 }) {
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -126,27 +122,12 @@ export function ChatInput({
         </div>
       )}
       <div className="max-w-3xl mx-auto glass-strong rounded-3xl shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)] p-1.5 flex gap-1.5 items-end">
-        <button
-          type="button"
-          onClick={onToggleBrowsing}
-          title={browsing ? "Browsing on — click to disable" : "Enable browsing for live web answers"}
-          aria-pressed={browsing}
-          className={cn(
-            "shrink-0 h-10 px-3 rounded-2xl flex items-center gap-1.5 text-xs font-medium transition-all",
-            browsing
-              ? "bg-primary text-primary-foreground shadow-md"
-              : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-          )}
-        >
-          <Globe className="w-4 h-4" />
-          <span className="hidden sm:inline">Browse</span>
-        </button>
         <textarea
           ref={inputRef}
           value={text}
           onChange={(e) => { setText(e.target.value); handleInput(); }}
           onKeyDown={handleKeyDown}
-          placeholder={dictation.listening ? "Listening…" : browsing ? "Search the web..." : "Ask anything..."}
+          placeholder={dictation.listening ? "Listening…" : "Search the web..."}
           rows={1}
           className="flex-1 resize-none bg-transparent text-foreground placeholder:text-muted-foreground/70 rounded-2xl px-3 py-2.5 text-[15px] leading-relaxed focus:outline-none scrollbar-thin"
         />
