@@ -242,13 +242,44 @@ serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(settings, !!browsing, lengthMode, privateKnowledge);
 
-    // When browsing is enabled, use a Gemini model with google_search grounding
+    // Web search is always-on. Use Firecrawl to retrieve fresh sources, then
+    // ground the model on them. Falls back gracefully if Firecrawl is missing.
     const model = browsing ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
+
+    let webContext = "";
+    if (browsing) {
+      const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+      const lastUserMsg = [...messages].reverse().find((m: { role: string; content: string }) => m.role === "user")?.content;
+      if (FIRECRAWL_API_KEY && lastUserMsg) {
+        try {
+          const fcRes = await fetch("https://api.firecrawl.dev/v2/search", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ query: lastUserMsg.slice(0, 400), limit: 5 }),
+          });
+          if (fcRes.ok) {
+            const fc = await fcRes.json();
+            const items = (fc?.data ?? fc?.web ?? []) as Array<{ title?: string; url?: string; description?: string }>;
+            if (items.length) {
+              webContext = "LIVE WEB SEARCH RESULTS (Firecrawl):\n" + items.slice(0, 5).map((r, i) =>
+                `[${i + 1}] ${r.title || ""}\n${r.url || ""}\n${(r.description || "").slice(0, 400)}`
+              ).join("\n\n") +
+              "\n\nUse these sources to ground your answer. Cite inline like (Source: <site>) when you use a fact, and prefer the freshest information.";
+            }
+          } else {
+            console.error("Firecrawl search failed:", fcRes.status, await fcRes.text());
+          }
+        } catch (e) {
+          console.error("Firecrawl error:", e);
+        }
+      }
+    }
 
     const body: Record<string, unknown> = {
       model,
       messages: [
         { role: "system", content: systemPrompt },
+        ...(webContext ? [{ role: "system", content: webContext }] : []),
         ...messages,
       ],
       stream: true,
