@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.classify-knowledge]
 verify_jwt = false
+
+[functions.vicen-admin]
+verify_jwt = false
