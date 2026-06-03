@@ -202,24 +202,24 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Require an authenticated user — prevents anonymous abuse of AI credits
+    // Guest mode is supported. If a real user JWT is present, we'll use it to
+    // fetch their private knowledge under RLS. Otherwise we continue as guest.
     const authHeader = req.headers.get("Authorization") || "";
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-    if (!authHeader.startsWith("Bearer ") || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    let authClient: ReturnType<typeof createClient> | null = null;
+    let isAuthenticatedUser = false;
+    if (authHeader.startsWith("Bearer ") && SUPABASE_URL && SUPABASE_ANON_KEY) {
+      const token = authHeader.replace("Bearer ", "");
+      authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
       });
-    }
-    const token = authHeader.replace("Bearer ", "");
-    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: claimsData, error: claimsErr } = await authClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims?.sub) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      try {
+        const { data, error } = await authClient.auth.getUser(token);
+        if (!error && data?.user?.id) isAuthenticatedUser = true;
+      } catch (_) {
+        // anon key or invalid token → treat as guest
+      }
     }
 
     const { messages, settings, browsing, lengthMode } = await req.json();
@@ -228,14 +228,16 @@ serve(async (req) => {
 
     // Fetch the user's private knowledge using their JWT (RLS-enforced)
     let privateKnowledge: { content: string; kind: string } | null = null;
-    try {
-      const { data } = await authClient
-        .from("private_knowledge")
-        .select("content, kind")
-        .maybeSingle();
-      if (data && data.content) privateKnowledge = { content: data.content, kind: data.kind || "md" };
-    } catch (e) {
-      console.error("private_knowledge fetch failed:", e);
+    if (isAuthenticatedUser && authClient) {
+      try {
+        const { data } = await authClient
+          .from("private_knowledge")
+          .select("content, kind")
+          .maybeSingle();
+        if (data && data.content) privateKnowledge = { content: data.content, kind: data.kind || "md" };
+      } catch (e) {
+        console.error("private_knowledge fetch failed:", e);
+      }
     }
 
     const systemPrompt = buildSystemPrompt(settings, !!browsing, lengthMode, privateKnowledge);
