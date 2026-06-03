@@ -275,7 +275,7 @@ serve(async (req) => {
       }
     }
 
-    const { messages: rawMessages, settings, browsing, lengthMode } = await req.json();
+    const { messages: rawMessages, settings, browsing, lengthMode, shownImageIds, lastImageContext } = await req.json();
 
     // Validate the client-supplied messages array to prevent prompt injection
     // (no system roles), token-exhaustion (count + per-message size cap),
@@ -300,6 +300,13 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const lastUserText = [...messages].reverse().find((m: { role: string; content: string }) => m.role === "user")?.content || "";
+    const wantsMore = MORE_INTENT_RE.test(lastUserText);
+    const visualIntent = IMAGE_INTENT_RE.test(lastUserText) || wantsMore;
+    const exclude = Array.isArray(shownImageIds) ? shownImageIds.filter((s: unknown): s is string => typeof s === "string") : [];
+    const adminImages = visualIntent ? await fetchAdminImages(lastUserText, wantsMore ? exclude : []) : [];
+    const adminKnowledge = await fetchAdminKnowledge(lastUserText);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
