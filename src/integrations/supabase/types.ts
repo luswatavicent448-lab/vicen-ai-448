@@ -300,6 +300,7 @@ export type Database = {
           is_typing: boolean
           joined_at: string
           last_seen: string
+          muted_until: string | null
           room_id: string
           user_id: string
         }
@@ -309,6 +310,7 @@ export type Database = {
           is_typing?: boolean
           joined_at?: string
           last_seen?: string
+          muted_until?: string | null
           room_id: string
           user_id: string
         }
@@ -318,6 +320,7 @@ export type Database = {
           is_typing?: boolean
           joined_at?: string
           last_seen?: string
+          muted_until?: string | null
           room_id?: string
           user_id?: string
         }
@@ -349,6 +352,10 @@ export type Database = {
         }[]
       }
       is_room_member: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_user_muted: {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
       }
