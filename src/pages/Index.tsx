@@ -50,8 +50,9 @@ export default function ChatPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [browsing, setBrowsing] = useState(false);
   const [searchingLive, setSearchingLive] = useState(false);
+  // Web search is always on (Firecrawl-powered)
+  const browsing = true;
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -161,11 +162,8 @@ export default function ChatPage() {
       return;
     }
 
-    const autoBrowse = !browsing && intent === "time_sensitive";
-    const effectiveBrowsing = browsing || autoBrowse;
-    if (autoBrowse) {
-      toast.info("🌐 Checking live data for this question");
-    }
+    const effectiveBrowsing = true;
+    void intent;
 
     const userMsg: Message = { role: "user", content: text };
     const pickedLength = autoLengthFor(text);
@@ -437,18 +435,7 @@ export default function ChatPage() {
           )}
         </div>
 
-        <ChatInput
-          onSend={handleSend}
-          disabled={isStreaming}
-          browsing={browsing}
-          onToggleBrowsing={() => {
-            setBrowsing((b) => {
-              const next = !b;
-              toast.success(next ? "🌐 Browsing mode on" : "Browsing mode off");
-              return next;
-            });
-          }}
-        />
+        <ChatInput onSend={handleSend} disabled={isStreaming} />
       </div>
     </div>
   );
