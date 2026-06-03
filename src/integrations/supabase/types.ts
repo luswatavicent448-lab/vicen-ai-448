@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_credentials: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           attachment_duration_ms: number | null
@@ -333,6 +357,162 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vicen_images: {
+        Row: {
+          category: string | null
+          country: string | null
+          created_at: string
+          description: string | null
+          file_size: number | null
+          height: number | null
+          id: string
+          is_active: boolean
+          language: string | null
+          mime_type: string | null
+          popularity_score: number | null
+          quality_score: number | null
+          relevance_boost: number | null
+          sub_category: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+          url: string
+          width: number | null
+        }
+        Insert: {
+          category?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          height?: number | null
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          mime_type?: string | null
+          popularity_score?: number | null
+          quality_score?: number | null
+          relevance_boost?: number | null
+          sub_category?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url: string
+          width?: number | null
+        }
+        Update: {
+          category?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          height?: number | null
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          mime_type?: string | null
+          popularity_score?: number | null
+          quality_score?: number | null
+          relevance_boost?: number | null
+          sub_category?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
+      vicen_knowledge: {
+        Row: {
+          added_by: string | null
+          categories: string[] | null
+          context_summary: string | null
+          created_at: string
+          entities: string[] | null
+          extracted_facts: string[] | null
+          id: string
+          is_active: boolean
+          is_locked: boolean
+          is_visible: boolean
+          raw_content: string
+          relationships: string[] | null
+          topic: string | null
+          updated_at: string
+          useful_for: string[] | null
+        }
+        Insert: {
+          added_by?: string | null
+          categories?: string[] | null
+          context_summary?: string | null
+          created_at?: string
+          entities?: string[] | null
+          extracted_facts?: string[] | null
+          id?: string
+          is_active?: boolean
+          is_locked?: boolean
+          is_visible?: boolean
+          raw_content: string
+          relationships?: string[] | null
+          topic?: string | null
+          updated_at?: string
+          useful_for?: string[] | null
+        }
+        Update: {
+          added_by?: string | null
+          categories?: string[] | null
+          context_summary?: string | null
+          created_at?: string
+          entities?: string[] | null
+          extracted_facts?: string[] | null
+          id?: string
+          is_active?: boolean
+          is_locked?: boolean
+          is_visible?: boolean
+          raw_content?: string
+          relationships?: string[] | null
+          topic?: string | null
+          updated_at?: string
+          useful_for?: string[] | null
+        }
+        Relationships: []
+      }
+      vicen_logs: {
+        Row: {
+          action: string
+          admin_name: string
+          id: string
+          session_id: string | null
+          target: string | null
+          timestamp: string
+          topic: string | null
+        }
+        Insert: {
+          action: string
+          admin_name: string
+          id?: string
+          session_id?: string | null
+          target?: string | null
+          timestamp?: string
+          topic?: string | null
+        }
+        Update: {
+          action?: string
+          admin_name?: string
+          id?: string
+          session_id?: string | null
+          target?: string | null
+          timestamp?: string
+          topic?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
