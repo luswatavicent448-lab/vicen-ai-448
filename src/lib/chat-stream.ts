@@ -1,4 +1,4 @@
-import { Citation, Message } from "@/types/chat";
+import { Citation, Message, VicenImage } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
@@ -56,8 +56,11 @@ export async function streamChat({
   settings,
   browsing,
   lengthMode,
+  shownImageIds,
+  lastImageContext,
   onDelta,
   onCitations,
+  onImages,
   onDone,
   onError,
 }: {
@@ -65,8 +68,11 @@ export async function streamChat({
   settings?: Record<string, unknown>;
   browsing?: boolean;
   lengthMode?: "short" | "medium" | "detailed" | "auto";
+  shownImageIds?: string[];
+  lastImageContext?: VicenImage[];
   onDelta: (text: string) => void;
   onCitations?: (citations: Citation[]) => void;
+  onImages?: (images: VicenImage[]) => void;
   onDone: () => void;
   onError: (error: string) => void;
 }) {
@@ -79,7 +85,7 @@ export async function streamChat({
       Authorization: `Bearer ${token}`,
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     },
-    body: JSON.stringify({ messages, settings, browsing: !!browsing, lengthMode }),
+    body: JSON.stringify({ messages, settings, browsing: !!browsing, lengthMode, shownImageIds, lastImageContext }),
   });
 
   if (!resp.ok) {
@@ -113,6 +119,10 @@ export async function streamChat({
       if (jsonStr === "[DONE]") { onDone(); return; }
       try {
         const parsed = JSON.parse(jsonStr);
+        if (Array.isArray(parsed.vicen_images) && onImages) {
+          onImages(parsed.vicen_images as VicenImage[]);
+          continue;
+        }
         const content = parsed.choices?.[0]?.delta?.content;
         if (content) onDelta(content);
         const citations = extractCitations(parsed);
