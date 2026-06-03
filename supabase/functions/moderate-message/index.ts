@@ -364,6 +364,21 @@ serve(async (req) => {
     }
     userScores.set(key, state);
 
+    // Persist mute to the database so it's enforced by RLS and survives
+    // refreshes/process restarts. 24-hour mute window.
+    if (action === "mute") {
+      try {
+        const mutedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        await admin
+          .from("room_members")
+          .update({ muted_until: mutedUntil })
+          .eq("room_id", roomId)
+          .eq("user_id", userId);
+      } catch (e) {
+        console.error("Failed to persist mute:", e);
+      }
+    }
+
     // Bump counts for already-known abusive terms (analytics in private table)
     for (const w of hits) {
       if (learned.has(w)) {
