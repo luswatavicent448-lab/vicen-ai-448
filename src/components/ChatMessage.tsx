@@ -17,6 +17,7 @@ import {
 import { Message } from "@/types/chat";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { VicenImageCards } from "@/components/VicenImageCards";
 
 export function ChatMessage({
   message,
@@ -118,6 +119,9 @@ export function ChatMessage({
             <div className="prose prose-sm max-w-none [&_p]:mb-2 [&_p:last-child]:mb-0 prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground">
               <ReactMarkdown>{message.content}</ReactMarkdown>
             </div>
+            {message.images && message.images.length > 0 && (
+              <VicenImageCards images={message.images} />
+            )}
             {hasCitations && (
               <div className="mt-3 pt-3 border-t border-border/40">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
