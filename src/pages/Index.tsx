@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Menu, Sparkles, Settings, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Conversation, Message } from "@/types/chat";
+import { Conversation, Message, VicenImage } from "@/types/chat";
 import { streamChat } from "@/lib/chat-stream";
 import { classifyIntent } from "@/lib/time-sensitive";
 import { ChatMessage, TypingIndicator, SearchingIndicator } from "@/components/ChatMessage";
@@ -53,6 +53,9 @@ export default function ChatPage() {
   const [searchingLive, setSearchingLive] = useState(false);
   // Web search is always on (Firecrawl-powered)
   const browsing = true;
+  // Track images shown across the active conversation (for "show me more" dedupe)
+  const shownImageIdsRef = useRef<Map<string, string[]>>(new Map());
+  const lastImageContextRef = useRef<Map<string, VicenImage[]>>(new Map());
   const [showLogin, setShowLogin] = useState(() => !localStorage.getItem("vicen-user-mode"));
   const [userMode, setUserMode] = useState(() => localStorage.getItem("vicen-user-mode") || "");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -180,6 +183,7 @@ export default function ChatPage() {
     setIsStreaming(true);
     if (effectiveBrowsing) setSearchingLive(true);
     let assistantContent = "";
+    let receivedImages: VicenImage[] = [];
 
     const currentMessages = [
       ...(conversations.find((c) => c.id === targetId)?.messages || []),
@@ -228,14 +232,37 @@ export default function ChatPage() {
       );
     };
 
+    const setImages = (images: VicenImage[]) => {
+      receivedImages = images;
+      const prevShown = shownImageIdsRef.current.get(targetId!) || [];
+      shownImageIdsRef.current.set(targetId!, [...prevShown, ...images.map((i) => i.id)]);
+      lastImageContextRef.current.set(targetId!, images);
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== targetId) return c;
+          const msgs = [...c.messages];
+          const last = msgs[msgs.length - 1];
+          if (last?.role === "assistant") {
+            msgs[msgs.length - 1] = { ...last, images };
+          } else {
+            msgs.push({ role: "assistant", content: "", images });
+          }
+          return { ...c, messages: msgs };
+        })
+      );
+    };
+
     try {
       await streamChat({
         messages: currentMessages,
         settings: settings as unknown as Record<string, unknown>,
         browsing: effectiveBrowsing,
         lengthMode: pickedLength,
+        shownImageIds: shownImageIdsRef.current.get(targetId!) || [],
+        lastImageContext: lastImageContextRef.current.get(targetId!) || [],
         onDelta: upsertAssistant,
         onCitations: setCitations,
+        onImages: setImages,
         onDone: () => { setIsStreaming(false); setSearchingLive(false); },
         onError: (err) => {
           toast.error(err);
@@ -243,6 +270,7 @@ export default function ChatPage() {
           setSearchingLive(false);
         },
       });
+      void receivedImages;
     } catch {
       toast.error("Failed to connect to AI");
       setIsStreaming(false);
