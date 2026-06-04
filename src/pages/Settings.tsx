@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUserProfile } from "@/hooks/use-user-profile";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 type Category = {
   id: string;
@@ -67,6 +69,36 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const { email, displayName, avatarUrl, initial } = useUserProfile();
   const shownName = displayName || (email ? email.split("@")[0] : "Guest User");
+  const tapsRef = useRef(0);
+  const tapTimerRef = useRef<number | null>(null);
+  const [tapHint, setTapHint] = useState<string | null>(null);
+
+  const handleVersionTap = () => {
+    tapsRef.current += 1;
+    if (tapTimerRef.current) window.clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = window.setTimeout(() => {
+      tapsRef.current = 0;
+      setTapHint(null);
+    }, 1500);
+
+    if (tapsRef.current === 5) {
+      if ("vibrate" in navigator) navigator.vibrate(20);
+      setTapHint("Keep going…");
+    } else if (tapsRef.current === 6) {
+      setTapHint("1 more…");
+    } else if (tapsRef.current >= 7) {
+      tapsRef.current = 0;
+      setTapHint(null);
+      if ("vibrate" in navigator) navigator.vibrate([20, 30, 40]);
+      const token = localStorage.getItem("vicen-admin-token");
+      if (token) {
+        toast.message("Admin System already enabled.");
+        navigate("/admin");
+      } else {
+        navigate("/admin/login");
+      }
+    }
+  };
 
   return (
     <div className="min-h-dvh bg-background">
@@ -163,7 +195,14 @@ export default function SettingsPage() {
           </div>
         ))}
 
-        <p className="text-center text-xs text-muted-foreground pt-4">Vicen AI · 1.0.0</p>
+        <button
+          onClick={handleVersionTap}
+          className="block mx-auto text-center text-xs text-muted-foreground pt-4 select-none"
+          aria-label="App version"
+        >
+          Vicen AI · 1.0.0
+          {tapHint && <span className="block text-[10px] text-primary/70 mt-0.5">{tapHint}</span>}
+        </button>
       </div>
     </div>
   );
