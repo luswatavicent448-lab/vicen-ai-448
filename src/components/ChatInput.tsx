@@ -127,7 +127,7 @@ export function ChatInput({
           value={text}
           onChange={(e) => { setText(e.target.value); handleInput(); }}
           onKeyDown={handleKeyDown}
-          placeholder={dictation.listening ? "Listening…" : "Search the web..."}
+          placeholder={dictation.listening ? "Listening…" : "Ask Vicen"}
           rows={1}
           className="flex-1 resize-none bg-transparent text-foreground placeholder:text-muted-foreground/70 rounded-2xl px-3 py-2.5 text-[15px] leading-relaxed focus:outline-none scrollbar-thin"
         />
