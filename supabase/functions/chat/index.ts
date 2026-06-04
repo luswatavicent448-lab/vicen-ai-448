@@ -366,7 +366,18 @@ serve(async (req) => {
           });
           if (fcRes.ok) {
             const fc = await fcRes.json();
-            const items = (fc?.data ?? fc?.web ?? []) as Array<{ title?: string; url?: string; description?: string }>;
+            // Firecrawl v2 returns { success, data: { web: [...], news: [...] } }.
+            // Older shape returned a flat array under `data`. Support both.
+            const raw = fc?.data;
+            const items = (
+              Array.isArray(raw)
+                ? raw
+                : [
+                    ...(Array.isArray(raw?.web) ? raw.web : []),
+                    ...(Array.isArray(raw?.news) ? raw.news : []),
+                  ]
+            ) as Array<{ title?: string; url?: string; description?: string }>;
+            console.log(`Firecrawl: query="${lastUserMsg.slice(0, 80)}" got ${items.length} results`);
             if (items.length) {
               webContext = "LIVE WEB SEARCH RESULTS (Firecrawl):\n" + items.slice(0, 5).map((r, i) =>
                 `[${i + 1}] ${r.title || ""}\n${r.url || ""}\n${(r.description || "").slice(0, 400)}`
