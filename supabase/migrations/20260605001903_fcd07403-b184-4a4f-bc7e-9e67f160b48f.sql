@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.prevent_self_mute_bypass() FROM PUBLIC, anon, authenticated;
