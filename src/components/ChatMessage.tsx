@@ -1,6 +1,4 @@
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import {
   ExternalLink,
   Globe,
@@ -19,6 +17,7 @@ import { Message } from "@/types/chat";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { VicenImageCards } from "@/components/VicenImageCards";
+import { AIMessageRenderer } from "@/components/AIMessageRenderer";
 
 export function ChatMessage({
   message,
@@ -117,61 +116,7 @@ export function ChatMessage({
           <p className="whitespace-pre-wrap">{message.content}</p>
         ) : (
           <>
-            <div className="prose prose-sm max-w-none [&_p]:mb-2 [&_p:last-child]:mb-0 prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  hr: () => (
-                    <hr className="my-5 border-0 h-px bg-border/60" />
-                  ),
-                  blockquote: ({ children }) => (
-                    <blockquote className="not-prose my-4 rounded-lg border-l-[3px] border-primary bg-secondary/40 px-4 py-3 [&_p]:my-1.5 [&_ul]:my-1.5 [&_li]:my-0.5 [&_p:last-child]:mb-0">
-                      {children}
-                    </blockquote>
-                  ),
-                  table: ({ children }) => (
-                    <div className="not-prose my-4 w-full overflow-x-auto rounded-lg border border-border">
-                      <table className="w-full border-collapse text-sm">{children}</table>
-                    </div>
-                  ),
-                  thead: ({ children }) => (
-                    <thead className="bg-secondary/70">{children}</thead>
-                  ),
-                  tr: ({ children }) => (
-                    <tr className="border-b border-border last:border-0 even:bg-secondary/20">{children}</tr>
-                  ),
-                  th: ({ children }) => (
-                    <th className="border-r border-border last:border-0 px-3 py-2 text-left font-semibold">{children}</th>
-                  ),
-                  td: ({ children }) => (
-                    <td className="border-r border-border last:border-0 px-3 py-2 align-top">{children}</td>
-                  ),
-                  p: ({ children, ...props }) => {
-                    const text = Array.isArray(children)
-                      ? children.map((c) => (typeof c === "string" ? c : "")).join("")
-                      : typeof children === "string"
-                        ? children
-                        : "";
-                    if (text.trimStart().startsWith("✅ Final Answer")) {
-                      return (
-                        <p className="not-prose my-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 font-medium text-emerald-300">
-                          {children}
-                        </p>
-                      );
-                    }
-                    return <p {...props}>{children}</p>;
-                  },
-                  ul: ({ children }) => (
-                    <ul className="my-2 list-disc pl-5 leading-[1.8] [&>li]:my-0.5">{children}</ul>
-                  ),
-                  ol: ({ children }) => (
-                    <ol className="my-2 list-decimal pl-5 leading-[1.8] [&>li]:my-0.5">{children}</ol>
-                  ),
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
-            </div>
+            <AIMessageRenderer content={message.content} />
             {message.images && message.images.length > 0 && (
               <VicenImageCards images={message.images} />
             )}
