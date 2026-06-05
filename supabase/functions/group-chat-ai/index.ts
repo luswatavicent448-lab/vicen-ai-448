@@ -38,13 +38,23 @@ serve(async (req) => {
     }
     const callerId = claimsData.claims.sub as string;
 
-    const { roomId, userMessage, senderName, history } = await req.json();
-    if (!roomId || !userMessage) {
+    const { roomId, userMessage: rawUserMessage, senderName: rawSenderName, history: rawHistory } = await req.json();
+    if (!roomId || typeof rawUserMessage !== "string" || !rawUserMessage.trim()) {
       return new Response(JSON.stringify({ error: "roomId and userMessage required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (rawUserMessage.length > 2000) {
+      return new Response(JSON.stringify({ error: "userMessage too long (max 2000 chars)" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userMessage = rawUserMessage.slice(0, 2000);
+    const senderName = typeof rawSenderName === "string"
+      ? rawSenderName.replace(/[\r\n]+/g, " ").slice(0, 64)
+      : "";
 
     // --- AuthZ: caller must be a member of the room ---
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -64,11 +74,17 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const recent = Array.isArray(history) ? history.slice(-8) : [];
-    const contextMessages = recent.map((m: { sender_name: string; content: string }) => ({
-      role: "user" as const,
-      content: `${m.sender_name}: ${m.content}`,
-    }));
+    const recent = Array.isArray(rawHistory) ? rawHistory.slice(-8) : [];
+    const contextMessages = recent
+      .filter((m: unknown): m is { sender_name?: unknown; content?: unknown } =>
+        !!m && typeof m === "object")
+      .map((m) => {
+        const name = typeof m.sender_name === "string"
+          ? m.sender_name.replace(/[\r\n]+/g, " ").slice(0, 64)
+          : "User";
+        const content = typeof m.content === "string" ? m.content.slice(0, 2000) : "";
+        return { role: "user" as const, content: `${name}: ${content}` };
+      });
 
     const systemPrompt = `You are VICEN AI, a friendly assistant participating in a group chat.
 Keep replies SHORT (1-3 sentences max), warm, and conversational.

@@ -14,7 +14,8 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "fallback-dev-secret";
+const SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+if (!SECRET) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured — admin token signing key missing");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
