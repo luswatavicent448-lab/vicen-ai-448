@@ -565,6 +565,14 @@ serve(async (req) => {
           const prelude = `data: ${JSON.stringify({ vicen_images: imagesForClient })}\n\n`;
           controller.enqueue(encoder.encode(prelude));
         }
+        if (firecrawlCitations.length > 0) {
+          const choice = {
+            choices: [
+              { delta: { annotations: firecrawlCitations.map((c) => ({ url: c.url, title: c.title })) } },
+            ],
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(choice)}\n\n`));
+        }
         const reader = upstream.getReader();
         try {
           while (true) {
