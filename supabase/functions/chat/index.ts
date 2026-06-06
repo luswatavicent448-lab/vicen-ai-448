@@ -463,6 +463,7 @@ serve(async (req) => {
     const model = browsing ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
 
     let webContext = "";
+    let firecrawlCitations: Array<{ url: string; title: string }> = [];
     if (browsing) {
       const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
       const lastUserMsg = [...messages].reverse().find((m: { role: string; content: string }) => m.role === "user")?.content;
