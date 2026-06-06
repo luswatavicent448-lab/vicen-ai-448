@@ -51,8 +51,6 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchingLive, setSearchingLive] = useState(false);
-  // Web search is always on (Firecrawl-powered)
-  const browsing = true;
   // Track images shown across the active conversation (for "show me more" dedupe)
   const shownImageIdsRef = useRef<Map<string, string[]>>(new Map());
   const lastImageContextRef = useRef<Map<string, VicenImage[]>>(new Map());
@@ -165,8 +163,10 @@ export default function ChatPage() {
       return;
     }
 
-    const effectiveBrowsing = true;
-    void intent;
+    // Only browse when the question is clearly time-sensitive / current.
+    // Greetings, small talk, and general knowledge questions answer from the
+    // model's own knowledge — no web search.
+    const effectiveBrowsing = intent === "time_sensitive";
 
     const userMsg: Message = { role: "user", content: text };
     const pickedLength = autoLengthFor(text);

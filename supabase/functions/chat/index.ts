@@ -147,7 +147,7 @@ function buildSystemPrompt(
     ? `LIVE WEB SEARCH MODE IS ON (silent, always-on):
 - Live web results (Firecrawl + google_search) are the PRIMARY source for time-sensitive, factual, or current-event claims. Use them silently — never tell the user a search was performed, never apologise for searching.
 - NEVER say any of the following or anything similar: "my search capabilities are limited", "I cannot access real-time data", "I don't have real-time access", "my training has a cutoff", "as of my last update", "I'm an AI and can't browse". These phrases are BANNED.
-- If live results are present, ground the answer on them and cite inline (e.g. "according to Reuters…"). Cross-reference high-stakes facts when possible.
+- If live results are present, ground the answer on them silently. DO NOT include inline citations like "(Source: example.com [1])" or bracketed numbers in the prose — the UI renders sources separately at the bottom of the message. Write clean natural prose.
 - IF SEARCH RETURNED NOTHING USABLE: do NOT mention the search at all. Silently fall back to your own trained knowledge and answer confidently and helpfully, using cautious phrasing only where genuinely needed ("Based on the latest information I have…"). Never leave the user with an empty or unhelpful response.
 - FRESHNESS: for fast-moving data (prices, scores, weather) add a brief "as of now" note when grounded on live results.
 - Ignore satirical or low-credibility sources. Never claim to have read paywalled content.
@@ -463,6 +463,7 @@ serve(async (req) => {
     const model = browsing ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
 
     let webContext = "";
+    let firecrawlCitations: Array<{ url: string; title: string }> = [];
     if (browsing) {
       const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
       const lastUserMsg = [...messages].reverse().find((m: { role: string; content: string }) => m.role === "user")?.content;
@@ -491,7 +492,11 @@ serve(async (req) => {
               webContext = "LIVE WEB SEARCH RESULTS (Firecrawl):\n" + items.slice(0, 5).map((r, i) =>
                 `[${i + 1}] ${r.title || ""}\n${r.url || ""}\n${(r.description || "").slice(0, 400)}`
               ).join("\n\n") +
-              "\n\nUse these sources to ground your answer. Cite inline like (Source: <site>) when you use a fact, and prefer the freshest information.";
+              "\n\nUse these sources to ground your answer. DO NOT write inline citations such as '(Source: site.com [1])' or bracketed numbers in the prose — the UI shows a clean numbered Sources list at the bottom automatically. Write the answer in clean natural prose.";
+              firecrawlCitations = items
+                .slice(0, 5)
+                .map((r) => ({ url: r.url || "", title: r.title || r.url || "" }))
+                .filter((c) => c.url);
             }
           } else {
             console.error("Firecrawl search failed:", fcRes.status, await fcRes.text());
@@ -559,6 +564,14 @@ serve(async (req) => {
         if (imagesForClient.length > 0) {
           const prelude = `data: ${JSON.stringify({ vicen_images: imagesForClient })}\n\n`;
           controller.enqueue(encoder.encode(prelude));
+        }
+        if (firecrawlCitations.length > 0) {
+          const choice = {
+            choices: [
+              { delta: { annotations: firecrawlCitations.map((c) => ({ url: c.url, title: c.title })) } },
+            ],
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(choice)}\n\n`));
         }
         const reader = upstream.getReader();
         try {
