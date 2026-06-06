@@ -491,7 +491,11 @@ serve(async (req) => {
               webContext = "LIVE WEB SEARCH RESULTS (Firecrawl):\n" + items.slice(0, 5).map((r, i) =>
                 `[${i + 1}] ${r.title || ""}\n${r.url || ""}\n${(r.description || "").slice(0, 400)}`
               ).join("\n\n") +
-              "\n\nUse these sources to ground your answer. Cite inline like (Source: <site>) when you use a fact, and prefer the freshest information.";
+              "\n\nUse these sources to ground your answer. DO NOT write inline citations such as '(Source: site.com [1])' or bracketed numbers in the prose — the UI shows a clean numbered Sources list at the bottom automatically. Write the answer in clean natural prose.";
+              firecrawlCitations = items
+                .slice(0, 5)
+                .map((r) => ({ url: r.url || "", title: r.title || r.url || "" }))
+                .filter((c) => c.url);
             }
           } else {
             console.error("Firecrawl search failed:", fcRes.status, await fcRes.text());
