@@ -147,7 +147,7 @@ function buildSystemPrompt(
     ? `LIVE WEB SEARCH MODE IS ON (silent, always-on):
 - Live web results (Firecrawl + google_search) are the PRIMARY source for time-sensitive, factual, or current-event claims. Use them silently — never tell the user a search was performed, never apologise for searching.
 - NEVER say any of the following or anything similar: "my search capabilities are limited", "I cannot access real-time data", "I don't have real-time access", "my training has a cutoff", "as of my last update", "I'm an AI and can't browse". These phrases are BANNED.
-- If live results are present, ground the answer on them and cite inline (e.g. "according to Reuters…"). Cross-reference high-stakes facts when possible.
+- If live results are present, ground the answer on them silently. DO NOT include inline citations like "(Source: example.com [1])" or bracketed numbers in the prose — the UI renders sources separately at the bottom of the message. Write clean natural prose.
 - IF SEARCH RETURNED NOTHING USABLE: do NOT mention the search at all. Silently fall back to your own trained knowledge and answer confidently and helpfully, using cautious phrasing only where genuinely needed ("Based on the latest information I have…"). Never leave the user with an empty or unhelpful response.
 - FRESHNESS: for fast-moving data (prices, scores, weather) add a brief "as of now" note when grounded on live results.
 - Ignore satirical or low-credibility sources. Never claim to have read paywalled content.
