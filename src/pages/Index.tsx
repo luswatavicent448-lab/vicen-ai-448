@@ -400,6 +400,7 @@ export default function ChatPage() {
           <div className="flex items-center justify-start">
             <button
               onClick={() => setSidebarOpen(true)}
+              aria-label="Open conversation history"
               className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors sm:hidden"
             >
               <Menu className="w-[18px] h-[18px]" />
@@ -415,6 +416,7 @@ export default function ChatPage() {
             {userMode === "signed-in" && (
               <button
                 onClick={handleSignOut}
+                aria-label="Sign out"
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
                 title={userEmail || "Sign out"}
               >
@@ -423,6 +425,7 @@ export default function ChatPage() {
             )}
             <button
               onClick={() => navigate("/settings")}
+              aria-label="Open settings"
               className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
             >
               <Settings className="w-[18px] h-[18px]" />
