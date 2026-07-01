@@ -1,0 +1,17 @@
+# Vicen AI
+
+> Vicen AI is a real-time social chat platform with AI-powered group rooms, a study assistant for math, physics, and past papers, and built-in AI moderation.
+
+Vicen AI combines a personal AI chat assistant with moderated group chat rooms. Users can create or join rooms with a 6-character code, send text and voice messages, take notes, review past papers, and get step-by-step help on academic problems.
+
+## Pages
+
+- [Home — Chat with Vicen AI](/): Personal AI chat with adaptive answers, live web search, and academic problem-solving.
+- [Group Chat](/group-chat): Create or join public and private group rooms with real-time messaging, voice notes, and AI moderation.
+- [Notes](/notes): Save subject-tagged study notes.
+- [Past Papers](/past-papers): Upload and revise past exam papers.
+- [Quiz](/quiz): Practice quiz mode across subjects.
+
+## Optional
+
+- [Settings](/settings): Personal preferences and account.
