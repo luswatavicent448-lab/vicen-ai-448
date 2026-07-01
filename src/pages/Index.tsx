@@ -8,7 +8,8 @@ import { ChatMessage, TypingIndicator, SearchingIndicator } from "@/components/C
 import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
 import { LoginScreen } from "@/components/LoginScreen";
-import { QuickActions } from "@/components/QuickActions";
+import { StarburstIcon } from "@/components/StarburstIcon";
+import { useGreeting } from "@/hooks/use-greeting";
 import { useSettings } from "@/hooks/use-settings";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -46,6 +47,7 @@ function autoLengthFor(text: string): "short" | "medium" | "detailed" {
 export default function ChatPage() {
   const { settings } = useSettings();
   const navigate = useNavigate();
+  const greeting = useGreeting();
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -377,7 +379,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-dvh overflow-hidden transition-colors duration-300">
+    <div className="flex h-dvh overflow-hidden bg-black text-white transition-colors duration-300">
       {showLogin && (
         <LoginScreen
           onGuest={() => handleLogin("guest")}
@@ -395,57 +397,85 @@ export default function ChatPage() {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="grid grid-cols-3 items-center px-4 py-3 shrink-0 glass">
-          <div className="flex items-center justify-start">
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        {(!active || active.messages.length === 0) ? (
+          <>
             <button
               onClick={() => setSidebarOpen(true)}
               aria-label="Open conversation history"
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors sm:hidden"
+              className="absolute top-6 left-6 w-6 h-6 flex items-center justify-center text-white/80 hover:text-white transition-colors z-10"
             >
-              <Menu className="w-[18px] h-[18px]" />
+              <Menu className="w-6 h-6" strokeWidth={2} />
             </button>
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-            </div>
-            <span className="font-semibold text-[15px] tracking-tight">Vicen AI</span>
-          </div>
-          <div className="flex items-center justify-end gap-0.5">
-            {userMode === "signed-in" && (
+            <div className="absolute top-5 right-4 flex items-center gap-0.5 z-10">
+              {userMode === "signed-in" && (
+                <button
+                  onClick={handleSignOut}
+                  aria-label="Sign out"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                  title={userEmail || "Sign out"}
+                >
+                  <LogOut className="w-[18px] h-[18px]" />
+                </button>
+              )}
               <button
-                onClick={handleSignOut}
-                aria-label="Sign out"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
-                title={userEmail || "Sign out"}
+                onClick={() => navigate("/settings")}
+                aria-label="Open settings"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white transition-colors"
               >
-                <LogOut className="w-[18px] h-[18px]" />
+                <Settings className="w-[18px] h-[18px]" />
               </button>
-            )}
-            <button
-              onClick={() => navigate("/settings")}
-              aria-label="Open settings"
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
-            >
-              <Settings className="w-[18px] h-[18px]" />
-            </button>
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto scrollbar-thin">
-          {!active || active.messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full px-6 text-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight">Vicen AI — Real-time AI Chat &amp; Study Assistant</h1>
-              <p className="text-muted-foreground text-sm max-w-sm">
-                Ask me anything — homework, coding, ideas, explanations. I'll give you clear, thoughtful answers.
-              </p>
-              <QuickActions onSelect={handleSend} />
             </div>
-          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center animate-fade-up">
+              <div style={{ animation: "float 4s ease-in-out infinite" }}>
+                <StarburstIcon size={48} />
+              </div>
+              <h1
+                className="mt-5 text-white font-normal tracking-tight"
+                style={{ fontSize: "22px", fontWeight: 400 }}
+              >
+                {greeting}
+              </h1>
+            </div>
+            <ChatInput onSend={handleSend} disabled={isStreaming} />
+          </>
+        ) : (
+          <>
+            <header className="grid grid-cols-3 items-center px-4 py-3 shrink-0 border-b border-white/5">
+              <div className="flex items-center justify-start">
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="Open conversation history"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  <Menu className="w-[18px] h-[18px]" />
+                </button>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <StarburstIcon size={18} />
+                <span className="font-semibold text-[15px] tracking-tight text-white">Vicen AI</span>
+              </div>
+              <div className="flex items-center justify-end gap-0.5">
+                {userMode === "signed-in" && (
+                  <button
+                    onClick={handleSignOut}
+                    aria-label="Sign out"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                    title={userEmail || "Sign out"}
+                  >
+                    <LogOut className="w-[18px] h-[18px]" />
+                  </button>
+                )}
+                <button
+                  onClick={() => navigate("/settings")}
+                  aria-label="Open settings"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                >
+                  <Settings className="w-[18px] h-[18px]" />
+                </button>
+              </div>
+            </header>
+            <div className="flex-1 overflow-y-auto scrollbar-thin">
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
               {active.messages.map((m, i) => (
                 <ChatMessage
@@ -463,10 +493,10 @@ export default function ChatPage() {
               )}
               <div ref={messagesEndRef} />
             </div>
-          )}
-        </div>
-
-        <ChatInput onSend={handleSend} disabled={isStreaming} />
+            </div>
+            <ChatInput onSend={handleSend} disabled={isStreaming} />
+          </>
+        )}
       </div>
     </div>
   );
