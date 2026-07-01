@@ -82,6 +82,32 @@ export type Database = {
           },
         ]
       }
+      chat_room_secrets: {
+        Row: {
+          created_at: string
+          password_hash: string
+          room_id: string
+        }
+        Insert: {
+          created_at?: string
+          password_hash: string
+          room_id: string
+        }
+        Update: {
+          created_at?: string
+          password_hash?: string
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_room_secrets_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_rooms: {
         Row: {
           code: string
@@ -90,7 +116,6 @@ export type Database = {
           id: string
           is_private: boolean
           name: string
-          password_hash: string | null
         }
         Insert: {
           code: string
@@ -99,7 +124,6 @@ export type Database = {
           id?: string
           is_private?: boolean
           name?: string
-          password_hash?: string | null
         }
         Update: {
           code?: string
@@ -108,7 +132,6 @@ export type Database = {
           id?: string
           is_private?: boolean
           name?: string
-          password_hash?: string | null
         }
         Relationships: []
       }
