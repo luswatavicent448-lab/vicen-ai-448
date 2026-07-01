@@ -93,7 +93,7 @@ export default function QuizPage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <Brain className="w-5 h-5 text-primary" />
-        <h2 className="text-base font-semibold">Quiz Mode</h2>
+        <h1 className="text-base font-semibold">Quiz Mode</h1>
       </header>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">

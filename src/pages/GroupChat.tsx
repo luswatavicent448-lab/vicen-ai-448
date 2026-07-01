@@ -436,7 +436,7 @@ export default function GroupChat() {
     return (
       <div className="h-dvh flex flex-col items-center justify-center px-6 bg-background">
         <div className="w-full max-w-sm space-y-4">
-          <h1 className="text-2xl font-bold tracking-tight text-center">Join Group Chat</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-center">Vicen AI Group Chat Lobby</h1>
           <p className="text-sm text-muted-foreground text-center">Choose a display name</p>
           <input
             value={nameInput}

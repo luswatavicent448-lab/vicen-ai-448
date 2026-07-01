@@ -33,12 +33,14 @@ export function Sidebar({
           <div className="flex gap-1">
             <button
               onClick={onNew}
+              aria-label="Start new conversation"
               className="w-8 h-8 rounded-lg bg-sidebar-accent text-sidebar-accent-foreground flex items-center justify-center hover:bg-primary/20 transition-colors"
             >
               <Plus className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
+              aria-label="Close sidebar"
               className="w-8 h-8 rounded-lg text-sidebar-foreground flex items-center justify-center hover:bg-sidebar-accent transition-colors sm:hidden"
             >
               <X className="w-4 h-4" />
@@ -60,6 +62,7 @@ export function Sidebar({
               <span className="truncate flex-1">{c.title}</span>
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(c.id); }}
+                aria-label={`Delete conversation ${c.title}`}
                 className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
               >
                 <Trash2 className="w-3.5 h-3.5" />

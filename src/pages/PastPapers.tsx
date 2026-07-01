@@ -112,7 +112,7 @@ export default function PastPapersPage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <FileText className="w-5 h-5 text-primary" />
-        <h2 className="text-base font-semibold">Past Papers</h2>
+        <h1 className="text-base font-semibold">Past Papers</h1>
       </header>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
