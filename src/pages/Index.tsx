@@ -436,7 +436,7 @@ export default function ChatPage() {
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <Sparkles className="w-8 h-8 text-primary" />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight">What can I help with?</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Vicen AI — Real-time AI Chat &amp; Study Assistant</h1>
               <p className="text-muted-foreground text-sm max-w-sm">
                 Ask me anything — homework, coding, ideas, explanations. I'll give you clear, thoughtful answers.
               </p>
