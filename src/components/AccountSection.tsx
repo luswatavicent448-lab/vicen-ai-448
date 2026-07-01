@@ -102,6 +102,14 @@ export function AccountSection() {
     } else {
       // Keep the user in the app — switch to guest mode rather than locking them out
       localStorage.setItem("vicen-user-mode", "guest");
+      // Clear per-user cached data so it doesn't leak to the next signed-in user
+      // on a shared device.
+      try {
+        localStorage.removeItem("vicen-conversations");
+        localStorage.removeItem("vicen-notes");
+        localStorage.removeItem("vicen-papers");
+        localStorage.removeItem("vicen-chat-name");
+      } catch { /* ignore */ }
       toast.success("Signed out — guest mode active");
     }
     setLoading(false);
