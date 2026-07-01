@@ -135,6 +135,11 @@
   30% { opacity: 1; transform: translateY(-4px); }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
 @layer utilities {
   .glass {
     background: hsl(var(--background) / 0.55);

@@ -106,11 +106,11 @@ export function ChatMessage({
     >
       <div className={`max-w-[85%] ${isUser ? "" : "w-full"}`}>
         <div
-          className={`text-[15px] leading-[1.65] ${
+          className={
             isUser
-              ? "px-5 py-3 rounded-[22px] rounded-br-lg bg-primary text-primary-foreground inline-block shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.45)]"
-              : "px-1 py-1 text-foreground"
-          }`}
+              ? "text-[15px] leading-[1.5] px-4 py-2.5 rounded-[22px] rounded-br-lg bg-primary text-primary-foreground inline-block shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.45)]"
+              : "text-[15px] leading-[1.5] px-1 py-1 text-[#ECECEC]"
+          }
         >
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.content}</p>

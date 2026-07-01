@@ -1,9 +1,10 @@
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
-import { Send, Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, AudioLines } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDictation, toBCP47 } from "@/hooks/use-dictation";
 import { useVoiceSettings } from "@/hooks/use-voice-settings";
 import { toast } from "sonner";
+import { PlusMenu } from "@/components/PlusMenu";
 
 export function ChatInput({
   onSend,
@@ -17,11 +18,16 @@ export function ChatInput({
   const { voice } = useVoiceSettings();
   const baseTextRef = useRef("");
 
+  // Auto-expand up to ~5 lines, then scroll internally.
+  // 18px font-size × ~1.5 line-height ≈ 27px per line; 5 lines ≈ 135px.
+  const MAX_HEIGHT = 140;
   const resize = () => {
     const el = inputRef.current;
     if (el) {
       el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 150) + "px";
+      const next = Math.min(el.scrollHeight, MAX_HEIGHT);
+      el.style.height = next + "px";
+      el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
     }
   };
 
@@ -106,13 +112,15 @@ export function ChatInput({
     dictation.start();
   };
 
+  const hasText = text.trim().length > 0;
+
   return (
-    <div className="p-3 sm:p-4 pb-4 sm:pb-6 bg-gradient-to-t from-background via-background/80 to-transparent">
+    <div className="px-4 pb-4 pt-2">
       {dictation.listening && (
-        <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 text-xs text-white/60">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60 animate-ping" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive" />
+            <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60 animate-ping" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
           </span>
           <span className="truncate">
             {dictation.interim
@@ -121,47 +129,55 @@ export function ChatInput({
           </span>
         </div>
       )}
-      <div className="max-w-3xl mx-auto glass-strong rounded-3xl shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)] p-1.5 flex gap-1.5 items-end">
+      <div className="max-w-3xl mx-auto rounded-[28px] border border-[#2A2A2A] bg-[#0D0D0D] px-3 pt-3 pb-2">
         <textarea
           ref={inputRef}
           value={text}
           onChange={(e) => { setText(e.target.value); handleInput(); }}
           onKeyDown={handleKeyDown}
-          placeholder={dictation.listening ? "Listening…" : "Ask Vicen"}
+          placeholder={dictation.listening ? "Listening…" : "Chat with Vicen.."}
           rows={1}
-          className="flex-1 resize-none bg-transparent text-foreground placeholder:text-muted-foreground/70 rounded-2xl px-3 py-2.5 text-[15px] leading-relaxed focus:outline-none scrollbar-thin"
+          className="w-full resize-none bg-transparent text-white placeholder:text-[#8A8A8A] text-[18px] leading-[1.4] px-1 pb-2 focus:outline-none scrollbar-thin"
+          style={{ overflowY: "hidden" }}
         />
-        <button
-          type="button"
-          onClick={toggleMic}
-          aria-pressed={dictation.listening}
-          title={dictation.listening ? "Stop dictation" : "Start dictation"}
-          className={cn(
-            "relative shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center transition-all",
-            dictation.listening
-              ? "bg-destructive text-destructive-foreground shadow-md"
-              : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-          )}
-        >
-          {dictation.listening && (
-            <>
-              <span className="absolute inset-0 rounded-2xl bg-destructive/40 animate-ping" />
-              <span className="absolute inset-0 rounded-2xl ring-2 ring-destructive/60" />
-            </>
-          )}
-          {dictation.listening ? (
-            <MicOff className="w-4 h-4 relative" />
-          ) : (
-            <Mic className="w-4 h-4 relative" />
-          )}
-        </button>
-        <button
-          onClick={handleSend}
-          disabled={disabled || !text.trim()}
-          className="shrink-0 w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center transition-all hover:brightness-110 shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.6)] disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
-        >
-          <Send className="w-4 h-4" />
-        </button>
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <PlusMenu />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleMic}
+              aria-pressed={dictation.listening}
+              title={dictation.listening ? "Stop dictation" : "Start dictation"}
+              className={cn(
+                "shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                dictation.listening
+                  ? "bg-red-500 text-white"
+                  : "text-white/70 hover:text-white hover:bg-white/10"
+              )}
+            >
+              {dictation.listening ? (
+                <MicOff className="w-[22px] h-[22px]" />
+              ) : (
+                <Mic className="w-[22px] h-[22px]" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={hasText ? handleSend : toggleMic}
+              disabled={disabled}
+              aria-label={hasText ? "Send message" : "Voice mode"}
+              className={cn(
+                "shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all",
+                hasText
+                  ? "bg-[#3B82F6] text-white hover:brightness-110"
+                  : "bg-white text-black hover:bg-white/90",
+                "disabled:opacity-40"
+              )}
+            >
+              <AudioLines className="w-[22px] h-[22px]" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
