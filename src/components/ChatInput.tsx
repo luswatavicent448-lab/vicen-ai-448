@@ -137,7 +137,7 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={dictation.listening ? "Listening…" : "Chat with Vicen.."}
           rows={1}
-          className="w-full resize-none bg-transparent text-white placeholder:text-[#8A8A8A] text-[18px] leading-[1.4] px-1 pb-2 focus:outline-none scrollbar-thin"
+          className="w-full resize-none bg-transparent text-white placeholder:text-[#8A8A8A] text-[15px] leading-[1.4] px-1 pb-2 focus:outline-none scrollbar-thin"
           style={{ overflowY: "hidden" }}
         />
         <div className="flex items-center justify-between gap-2 pt-1">
