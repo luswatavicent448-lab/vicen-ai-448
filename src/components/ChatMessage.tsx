@@ -104,12 +104,12 @@ export function ChatMessage({
     <div
       className={`flex ${isUser ? "justify-end" : "justify-start"} animate-fade-up`}
     >
-      <div className={`max-w-[85%] ${isUser ? "" : "w-full"}`}>
+      <div className={`${isUser ? "max-w-[78%]" : "max-w-full w-full"}`}>
         <div
           className={
             isUser
-              ? "text-[15px] leading-[1.5] px-4 py-2.5 rounded-[22px] rounded-br-lg bg-primary text-primary-foreground inline-block shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.45)]"
-              : "text-[15px] leading-[1.5] px-1 py-1 text-[#ECECEC]"
+              ? "text-[14px] leading-[1.45] px-3 py-1.5 rounded-[16px] rounded-br-md bg-primary text-primary-foreground inline-block"
+              : "text-[14.5px] leading-[1.55] px-1 py-0.5 text-[#ECECEC]"
           }
         >
         {isUser ? (
