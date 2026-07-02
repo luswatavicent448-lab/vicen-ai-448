@@ -46,7 +46,7 @@ const WOULD_YOU_LIKE_RE = /^\s*(?:\*\*)?\s*(Would you like|Want me to|Shall I|Do
 // ─── Atomic styled pieces ───────────────────────────────────────────────────
 function TopicTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="block text-[1.15rem] font-bold text-foreground mb-4 pb-2 border-b border-border/60">
+    <h2 className="block text-[15px] font-bold text-foreground mb-3 pb-1.5 border-b border-border/60">
       {children}
     </h2>
   );
@@ -54,7 +54,7 @@ function TopicTitle({ children }: { children: React.ReactNode }) {
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="block text-[1rem] font-bold mt-5 mb-2.5" style={{ color: "#a0c4ff" }}>
+    <h3 className="block text-[14px] font-bold mt-4 mb-2" style={{ color: "#a0c4ff" }}>
       {children}
     </h3>
   );
@@ -141,22 +141,14 @@ function FormulaLine({ label, value }: { label: string; value: string }) {
 }
 
 function BodyText({ children }: { children: React.ReactNode }) {
-  return <p className="my-1.5 leading-[1.65]">{children}</p>;
+  return <p className="my-1.5 leading-[1.6] text-[13.5px]">{children}</p>;
 }
 
 function WouldYouLike({ text }: { text: string }) {
   return (
-    <div
-      className="block mt-5 italic rounded-lg px-3.5 py-2.5"
-      style={{
-        background: "#0f172a",
-        border: "1px solid #1e3a5f",
-        color: "#7dd3fc",
-        fontSize: "0.92rem",
-      }}
-    >
+    <p className="my-2 leading-[1.6] text-[13.5px] text-foreground">
       {renderInline(text, "wyl")}
-    </div>
+    </p>
   );
 }
 
@@ -451,7 +443,7 @@ export function AIMessageRenderer({ content }: { content: string }) {
   }
   flushLists();
 
-  return <div className="text-[15px] leading-[1.65] text-foreground">{out}</div>;
+  return <div className="text-[13.5px] leading-[1.6] text-foreground">{out}</div>;
 }
 
 export default AIMessageRenderer;
