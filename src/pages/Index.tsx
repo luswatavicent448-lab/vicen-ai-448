@@ -9,8 +9,8 @@ import { ChatInput } from "@/components/ChatInput";
 import { Sidebar } from "@/components/Sidebar";
 import { LoginScreen } from "@/components/LoginScreen";
 import { StarburstIcon } from "@/components/StarburstIcon";
-import { useGreeting } from "@/hooks/use-greeting";
 import { useSettings } from "@/hooks/use-settings";
+import { useUserProfile } from "@/hooks/use-user-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -44,10 +44,21 @@ function autoLengthFor(text: string): "short" | "medium" | "detailed" {
   return "medium";
 }
 
+function timeGreeting(): string {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return "Good morning";
+  if (h >= 12 && h < 17) return "Good afternoon";
+  if (h >= 17) return "Good evening";
+  return "Good night";
+}
+
+const GREETING_RE = /^\s*(hi|hii+|hey|hello|helloo+|hola|yo|sup|howdy|hiya|good\s*(morning|afternoon|evening|night)|gm|ga|ge|gn)[\s!.?]*$/i;
+
 export default function ChatPage() {
   const { settings } = useSettings();
   const navigate = useNavigate();
-  const greeting = useGreeting();
+  const profile = useUserProfile();
+  const firstName = (profile.displayName || profile.email || "").split(/[\s@]/)[0] || "";
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -133,6 +144,28 @@ export default function ChatPage() {
     let targetId = activeId;
     if (!targetId) {
       targetId = createConversation(text);
+    }
+
+    // Bare greeting → answer locally with a time-based greeting.
+    if (GREETING_RE.test(text)) {
+      const userMsg: Message = { role: "user", content: text };
+      const namePart = firstName ? `, ${firstName}` : "";
+      const reply: Message = {
+        role: "assistant",
+        content: `${timeGreeting()}${namePart}. How can I help you today?`,
+      };
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id !== targetId
+            ? c
+            : {
+                ...c,
+                title: c.messages.length === 0 ? text.slice(0, 40) : c.title,
+                messages: [...c.messages, userMsg, reply],
+              },
+        ),
+      );
+      return;
     }
 
     // Intent classification with context inheritance from recent user messages
@@ -430,11 +463,8 @@ export default function ChatPage() {
               <div style={{ animation: "float 4s ease-in-out infinite" }}>
                 <StarburstIcon size={48} />
               </div>
-              <h1
-                className="mt-5 text-white font-normal tracking-tight"
-                style={{ fontSize: "22px", fontWeight: 400 }}
-              >
-                {greeting}
+              <h1 className="mt-5 text-white/90 font-normal tracking-tight text-[20px]">
+                How can I help you today?
               </h1>
             </div>
             <ChatInput onSend={handleSend} disabled={isStreaming} />
