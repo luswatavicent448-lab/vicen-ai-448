@@ -108,8 +108,8 @@ export function ChatMessage({
         <div
           className={
             isUser
-              ? "text-[14px] leading-[1.45] px-3 py-1.5 rounded-[16px] rounded-br-md bg-primary text-primary-foreground inline-block"
-              : "text-[14.5px] leading-[1.55] px-1 py-0.5 text-[#ECECEC]"
+              ? "text-[16px] leading-[1.5] px-3.5 py-2 rounded-[18px] rounded-br-md bg-primary text-primary-foreground inline-block"
+              : "text-[16px] leading-[1.55] px-1 py-0.5 text-[#ECECEC]"
           }
         >
         {isUser ? (
