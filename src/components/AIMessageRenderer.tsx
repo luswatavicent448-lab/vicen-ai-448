@@ -443,7 +443,7 @@ export function AIMessageRenderer({ content }: { content: string }) {
   }
   flushLists();
 
-  return <div className="text-[13.5px] leading-[1.6] text-foreground">{out}</div>;
+  return <div className="text-[16px] leading-[1.6] text-foreground">{out}</div>;
 }
 
 export default AIMessageRenderer;
