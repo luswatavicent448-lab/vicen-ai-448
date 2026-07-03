@@ -70,6 +70,26 @@ const CHANGE_WORDS = [
   "score", "scored", "ceo", "elected", "appointed",
 ];
 
+// Explicit user commands that MUST force a web search regardless of topic.
+const EXPLICIT_SEARCH_TRIGGERS: RegExp[] = [
+  /\bsearch (the )?(web|online|internet|google)\b/i,
+  /\bsearch about\b/i,
+  /\blook it up\b/i,
+  /\blook (this|that|them) up\b/i,
+  /\bbrowse (the )?(web|internet)\b/i,
+  /\bfind (it |them |this )?online\b/i,
+  /\buse web search\b/i,
+  /\bgoogle (it|this|that)\b/i,
+  /\blatest (info|information|news|updates?) (on|about)\b/i,
+  /\bcurrent news (on|about)\b/i,
+  /\brecent updates? (on|about)\b/i,
+  /\bcheck online\b/i,
+];
+
+export function hasExplicitSearchTrigger(text: string): boolean {
+  return EXPLICIT_SEARCH_TRIGGERS.some((re) => re.test(text));
+}
+
 /**
  * Classify a single message with optional prior-message context inheritance.
  * `priorTexts` is recent conversation (oldest → newest) used to inherit context
@@ -78,6 +98,9 @@ const CHANGE_WORDS = [
 export function classifyIntent(text: string, priorTexts: string[] = []): QueryIntent {
   const t = text.trim();
   if (!t) return "conversational";
+
+  // Explicit user command to search — always time-sensitive, highest priority.
+  if (hasExplicitSearchTrigger(t)) return "time_sensitive";
 
   // Very short pure conversational
   if (CONVERSATIONAL_PATTERNS.some((re) => re.test(t)) && t.split(/\s+/).length <= 3) {
